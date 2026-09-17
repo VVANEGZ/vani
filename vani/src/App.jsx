@@ -5,6 +5,7 @@ import Sidebar from "./components/Sidebar";
 import NotesGrid from "./components/NotesGrid";
 import DeleteSubjectModal from "./components/DeleteSubjectModal";
 import CommandPalette from "./components/CommandPalette";
+import AuthPanel from "./auth/AuthPanel.jsx";
 import { loadData, saveData } from "./storage/storage";
 import { exportNotesMarkdown, importNotesMarkdown } from "./storage/notesMarkdown";
 
@@ -302,6 +303,7 @@ export default function App() {
               <Upload size={14} /> Importar .md
             </button>
             <input ref={fileInputRef} type="file" accept="text/markdown,.md" className="hidden" onChange={handleImport} />
+            <AuthPanel />
           </div>
         </div>
 
