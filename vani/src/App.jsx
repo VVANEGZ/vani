@@ -4,7 +4,8 @@ import TabBar from "./components/TabBar";
 import Sidebar from "./components/Sidebar";
 import NotesGrid from "./components/NotesGrid";
 import DeleteSubjectModal from "./components/DeleteSubjectModal";
-import { exportBackup, importBackup, loadData, saveData } from "./storage/storage";
+import { loadData, saveData } from "./storage/storage";
+import { exportNotesMarkdown, importNotesMarkdown } from "./storage/notesMarkdown";
 
 function mixWithWhite(hex, ratio = 0.9) {
   const safeHex = /^#[0-9A-F]{6}$/i.test(hex || "") ? hex : "#3B82F6";
@@ -80,13 +81,15 @@ export default function App() {
     if (!file) return;
 
     try {
-      const importedSubjects = await importBackup(file);
-      setMaterias(importedSubjects);
-      setActivaId(importedSubjects[0]?.id || "");
-      setMensaje("Respaldo importado correctamente.");
+      const importedNotes = await importNotesMarkdown(file);
+      actualizarMateriaActiva("tarjetas", [
+        ...(materiaActiva.tarjetas || []),
+        ...importedNotes,
+      ]);
+      setMensaje(`${importedNotes.length} apunte${importedNotes.length === 1 ? "" : "s"} importado${importedNotes.length === 1 ? "" : "s"}.`);
     } catch (error) {
       console.error(error);
-      setMensaje("No se pudo importar ese respaldo.");
+      setMensaje("No se pudo importar ese archivo Markdown.");
     } finally {
       event.target.value = "";
     }
@@ -106,22 +109,27 @@ export default function App() {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => exportBackup(materias)}
+              onClick={() => {
+                exportNotesMarkdown(materiaActiva);
+                setMensaje("Apuntes exportados en Markdown.");
+              }}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              title="Exportar únicamente los apuntes de esta materia"
             >
-              <Download size={14} /> Exportar
+              <Download size={14} /> Exportar .md
             </button>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              title="Añadir apuntes desde un archivo Markdown a esta materia"
             >
-              <Upload size={14} /> Importar
+              <Upload size={14} /> Importar .md
             </button>
             <input
               ref={fileInputRef}
               type="file"
-              accept="application/json,.json"
+              accept="text/markdown,.md"
               className="hidden"
               onChange={handleImport}
             />
@@ -149,6 +157,7 @@ export default function App() {
           editandoEncuadre={editandoEncuadre}
           setEditandoEncuadre={setEditandoEncuadre}
           onUpdate={actualizarMateriaActiva}
+          onSaved={() => setMensaje("Cambios guardados.")}
         />
         <NotesGrid materia={materiaActiva} onUpdate={actualizarMateriaActiva} />
       </div>
