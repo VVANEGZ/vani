@@ -18,7 +18,12 @@ export default function NotesGrid({ materia, onUpdate }) {
   };
 
   const addCard = (topicId) => {
-    const nueva = { id: `card-${Date.now()}`, titulo: "Nuevo Bloque de Notas", contenido: "" };
+    const nueva = {
+      id: `card-${Date.now()}`,
+      titulo: "Nuevo Bloque de Notas",
+      contenido: "",
+      color: materia.color || "#3B82F6",
+    };
     updateTopics((temas) => temas.map((tema) =>
       tema.id === topicId ? { ...tema, tarjetas: [...(tema.tarjetas || []), nueva] } : tema,
     ));
@@ -102,29 +107,52 @@ export default function NotesGrid({ materia, onUpdate }) {
               <p className="rounded-xl border border-dashed border-slate-300 p-5 text-center text-sm text-slate-400 dark:border-slate-700">Este tema todavía no tiene apuntes.</p>
             ) : (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
-                {(tema.tarjetas || []).map((tarjeta) => (
-                  <article key={tarjeta.id} className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                    <div className="mb-3 flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={tarjeta.titulo}
-                        onChange={(e) => updateCard(tema.id, tarjeta.id, "titulo", e.target.value)}
-                        className="min-w-0 flex-1 border-b border-transparent bg-transparent pb-1 font-semibold text-slate-800 outline-none focus:border-slate-300 dark:text-slate-100 dark:focus:border-slate-600"
+                {(tema.tarjetas || []).map((tarjeta) => {
+                  const cardColor = tarjeta.color || materia.color || "#3B82F6";
+                  return (
+                    <article
+                      key={tarjeta.id}
+                      className="min-w-0 rounded-xl border p-4 shadow-sm transition-colors"
+                      style={{
+                        borderColor: cardColor,
+                        backgroundColor: `color-mix(in srgb, ${cardColor} 12%, transparent)`,
+                      }}
+                    >
+                      <div className="mb-3 flex items-center gap-2">
+                        <label
+                          className="relative h-6 w-6 shrink-0 cursor-pointer rounded-full border-2 border-white shadow-sm ring-1 ring-slate-300 transition hover:scale-110 dark:border-slate-900 dark:ring-slate-600"
+                          style={{ backgroundColor: cardColor }}
+                          title="Cambiar color de este apunte"
+                        >
+                          <input
+                            type="color"
+                            value={cardColor}
+                            onChange={(e) => updateCard(tema.id, tarjeta.id, "color", e.target.value)}
+                            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                            aria-label={`Color del apunte ${tarjeta.titulo}`}
+                          />
+                        </label>
+                        <input
+                          type="text"
+                          value={tarjeta.titulo}
+                          onChange={(e) => updateCard(tema.id, tarjeta.id, "titulo", e.target.value)}
+                          className="min-w-0 flex-1 border-b border-transparent bg-transparent pb-1 font-semibold text-slate-800 outline-none focus:border-slate-300 dark:text-slate-100 dark:focus:border-slate-600"
+                        />
+                        <button
+                          onClick={() => setDeleteTarget({ type: "card", id: tarjeta.id, topicId: tema.id, name: tarjeta.titulo })}
+                          className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
+                          aria-label={`Eliminar apunte ${tarjeta.titulo}`}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                      <TipTapEditor
+                        content={tarjeta.contenido}
+                        onUpdate={(html) => updateCard(tema.id, tarjeta.id, "contenido", html)}
                       />
-                      <button
-                        onClick={() => setDeleteTarget({ type: "card", id: tarjeta.id, topicId: tema.id, name: tarjeta.titulo })}
-                        className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
-                        aria-label={`Eliminar apunte ${tarjeta.titulo}`}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                    <TipTapEditor
-                      content={tarjeta.contenido}
-                      onUpdate={(html) => updateCard(tema.id, tarjeta.id, "contenido", html)}
-                    />
-                  </article>
-                ))}
+                    </article>
+                  );
+                })}
               </div>
             )}
           </section>
