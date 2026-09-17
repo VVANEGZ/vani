@@ -34,7 +34,7 @@ const INITIAL_SUBJECTS = [
       {
         id: "topic-general",
         nombre: "General",
-        tarjetas: [{ id: "card-1", titulo: "Apuntes Generales", contenido: "" }],
+        tarjetas: [{ id: "card-1", titulo: "Apuntes Generales", contenido: "", color: "#3B82F6" }],
       },
     ],
   },
@@ -60,16 +60,27 @@ function normalizeCriteria(materia) {
   return parseLegacyEncuadre(materia.encuadre || "");
 }
 
+function normalizeCards(cards, fallbackColor) {
+  return (Array.isArray(cards) ? cards : []).map((card, index) => ({
+    id: card.id || `card-${Date.now()}-${index}`,
+    titulo: card.titulo || "Apunte",
+    contenido: card.contenido || "",
+    color: /^#[0-9A-F]{6}$/i.test(card.color || "") ? card.color : fallbackColor,
+  }));
+}
+
 function normalizeTopics(materia) {
+  const fallbackColor = materia.color || "#3B82F6";
+
   if (Array.isArray(materia.temas) && materia.temas.length) {
     return materia.temas.map((tema, index) => ({
       id: tema.id || `topic-${Date.now()}-${index}`,
       nombre: tema.nombre || `Tema ${index + 1}`,
-      tarjetas: Array.isArray(tema.tarjetas) ? tema.tarjetas : [],
+      tarjetas: normalizeCards(tema.tarjetas, fallbackColor),
     }));
   }
 
-  const tarjetas = Array.isArray(materia.tarjetas) ? materia.tarjetas : [];
+  const tarjetas = normalizeCards(materia.tarjetas, fallbackColor);
   return [{ id: `topic-general-${materia.id || Date.now()}`, nombre: "Sin tema", tarjetas }];
 }
 
