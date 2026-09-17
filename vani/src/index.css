@@ -61,6 +61,17 @@ textarea {
   font-style: italic;
 }
 
+.vani-editor a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.vani-editor a:hover {
+  color: #1d4ed8;
+}
+
 .vani-editor ul,
 .vani-editor ol {
   margin: 0.55rem 0;
