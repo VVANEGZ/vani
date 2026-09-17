@@ -91,7 +91,10 @@ export default function App() {
 
     try {
       const importedNotes = await importNotesMarkdown(file);
-      const topics = [...(materiaActiva.temas || [])];
+      const topics = (materiaActiva.temas || []).map((topic) => ({
+        ...topic,
+        tarjetas: [...(topic.tarjetas || [])],
+      }));
 
       importedNotes.forEach((note) => {
         const topicName = note.topic || "Importados";
@@ -100,7 +103,7 @@ export default function App() {
           topic = { id: `topic-${Date.now()}-${topics.length}`, nombre: topicName, tarjetas: [] };
           topics.push(topic);
         }
-        topic.tarjetas = [...(topic.tarjetas || []), { id: note.id, titulo: note.titulo, contenido: note.contenido }];
+        topic.tarjetas = [...topic.tarjetas, { id: note.id, titulo: note.titulo, contenido: note.contenido }];
       });
 
       actualizarMateriaActiva("temas", topics);
