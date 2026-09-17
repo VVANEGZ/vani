@@ -1,12 +1,19 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 html {
   background: #f8fafc;
 }
 
+html.dark {
+  background: #020617;
+  color-scheme: dark;
+}
+
 body {
   margin: 0;
   min-width: 320px;
+  overflow-wrap: anywhere;
 }
 
 button,
@@ -15,9 +22,22 @@ textarea {
   font: inherit;
 }
 
+input,
+textarea,
+.vani-editor,
+.vani-editor * {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .vani-editor {
   font-size: 0.925rem;
   line-height: 1.7;
+  color: #334155;
+}
+
+.dark .vani-editor {
+  color: #cbd5e1;
 }
 
 .vani-editor > *:first-child {
@@ -39,6 +59,12 @@ textarea {
   font-weight: 700;
   line-height: 1.25;
   margin: 1rem 0 0.45rem;
+}
+
+.dark .vani-editor h1,
+.dark .vani-editor h2,
+.dark .vani-editor h3 {
+  color: #f8fafc;
 }
 
 .vani-editor h1 {
@@ -68,8 +94,16 @@ textarea {
   cursor: pointer;
 }
 
+.dark .vani-editor a {
+  color: #60a5fa;
+}
+
 .vani-editor a:hover {
   color: #1d4ed8;
+}
+
+.dark .vani-editor a:hover {
+  color: #93c5fd;
 }
 
 .vani-editor ul,
@@ -97,6 +131,11 @@ textarea {
   color: #475569;
 }
 
+.dark .vani-editor blockquote {
+  border-left-color: #475569;
+  color: #94a3b8;
+}
+
 .vani-editor code {
   border-radius: 0.3rem;
   background: #f1f5f9;
@@ -105,12 +144,21 @@ textarea {
   font-size: 0.875em;
 }
 
+.dark .vani-editor code {
+  background: #1e293b;
+}
+
 .vani-editor pre {
   overflow-x: auto;
   border-radius: 0.65rem;
   background: #0f172a;
   padding: 0.8rem;
   color: #f8fafc;
+}
+
+.dark .vani-editor pre {
+  background: #020617;
+  border: 1px solid #334155;
 }
 
 .vani-editor pre code {
@@ -123,6 +171,10 @@ textarea {
   margin: 1rem 0;
   border: 0;
   border-top: 1px solid #e2e8f0;
+}
+
+.dark .vani-editor hr {
+  border-top-color: #334155;
 }
 
 .vani-editor .ProseMirror-selectednode {
