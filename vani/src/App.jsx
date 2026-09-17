@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, Moon, Sun, Upload } from "lucide-react";
+import { Command, Download, Moon, Sun, Upload } from "lucide-react";
 import TabBar from "./components/TabBar";
 import Sidebar from "./components/Sidebar";
 import NotesGrid from "./components/NotesGrid";
 import DeleteSubjectModal from "./components/DeleteSubjectModal";
+import CommandPalette from "./components/CommandPalette";
 import { loadData, saveData } from "./storage/storage";
 import { exportNotesMarkdown, importNotesMarkdown } from "./storage/notesMarkdown";
 
@@ -25,6 +26,13 @@ function mixWithBlack(hex, ratio = 0.82) {
   return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
 }
 
+function isTypingTarget(target) {
+  if (!(target instanceof HTMLElement)) return false;
+  return Boolean(
+    target.closest("input, textarea, select, [contenteditable='true'], .ProseMirror"),
+  );
+}
+
 export default function App() {
   const initialData = useMemo(() => loadData(), []);
   const [materias, setMaterias] = useState(initialData.materias);
@@ -32,6 +40,7 @@ export default function App() {
   const [materiaAEliminar, setMateriaAEliminar] = useState(null);
   const [mensaje, setMensaje] = useState("");
   const [theme, setTheme] = useState(() => localStorage.getItem("vani_theme") || "light");
+  const [commandOpen, setCommandOpen] = useState(false);
   const fileInputRef = useRef(null);
 
   const materiaActiva = materias.find((m) => m.id === activaId) || materias[0];
@@ -55,8 +64,6 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [mensaje]);
 
-  if (!materiaActiva) return null;
-
   const actualizarMateriaActiva = (campo, valor) => {
     setMaterias((prev) =>
       prev.map((materia) => materia.id === activaId ? { ...materia, [campo]: valor } : materia),
@@ -74,6 +81,47 @@ export default function App() {
     };
     setMaterias((prev) => [...prev, nueva]);
     setActivaId(nueva.id);
+    setMensaje("Materia creada.");
+  };
+
+  const agregarTema = () => {
+    if (!materiaActiva) return;
+    const temas = materiaActiva.temas || [];
+    const nuevo = {
+      id: `topic-${Date.now()}`,
+      nombre: `Tema ${temas.length + 1}`,
+      tarjetas: [],
+    };
+    actualizarMateriaActiva("temas", [...temas, nuevo]);
+    setMensaje("Tema creado.");
+  };
+
+  const agregarApunte = () => {
+    if (!materiaActiva) return;
+    const temas = materiaActiva.temas || [];
+    const targetTopic = temas[0];
+
+    if (!targetTopic) {
+      const topicId = `topic-${Date.now()}`;
+      actualizarMateriaActiva("temas", [{
+        id: topicId,
+        nombre: "Sin tema",
+        tarjetas: [{ id: `card-${Date.now()}`, titulo: "Nuevo Bloque de Notas", contenido: "" }],
+      }]);
+      setMensaje("Apunte creado en “Sin tema”.");
+      return;
+    }
+
+    const nueva = { id: `card-${Date.now()}`, titulo: "Nuevo Bloque de Notas", contenido: "" };
+    actualizarMateriaActiva(
+      "temas",
+      temas.map((tema) =>
+        tema.id === targetTopic.id
+          ? { ...tema, tarjetas: [...(tema.tarjetas || []), nueva] }
+          : tema,
+      ),
+    );
+    setMensaje(`Apunte creado en “${targetTopic.nombre}”.`);
   };
 
   const confirmarEliminacion = () => {
@@ -87,7 +135,7 @@ export default function App() {
 
   const handleImport = async (event) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || !materiaActiva) return;
 
     try {
       const importedNotes = await importNotesMarkdown(file);
@@ -116,6 +164,93 @@ export default function App() {
     }
   };
 
+  const commands = useMemo(() => [
+    {
+      id: "new-subject",
+      label: "Nueva materia",
+      description: "Crear una materia nueva",
+      aliases: ["materia", "subject", "crear"],
+      icon: "materia",
+      hint: "Ctrl+Alt+M",
+      action: agregarMateria,
+    },
+    {
+      id: "new-topic",
+      label: "Nuevo tema",
+      description: "Crear una carpeta/tema en la materia actual",
+      aliases: ["tema", "carpeta", "folder"],
+      icon: "tema",
+      hint: "Ctrl+Alt+T",
+      action: agregarTema,
+    },
+    {
+      id: "new-note",
+      label: "Nuevo apunte",
+      description: "Crear un bloque de apuntes en el primer tema",
+      aliases: ["apunte", "bloque", "nota", "note"],
+      icon: "apunte",
+      hint: "Ctrl+Alt+N",
+      action: agregarApunte,
+    },
+    {
+      id: "toggle-theme",
+      label: theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro",
+      description: "Alternar la apariencia de Vani",
+      aliases: ["oscuro", "claro", "tema", "dark", "light"],
+      icon: theme === "dark" ? "light" : "theme",
+      action: () => setTheme((current) => current === "dark" ? "light" : "dark"),
+    },
+    {
+      id: "export-notes",
+      label: "Exportar apuntes",
+      description: "Descargar los apuntes de la materia actual en Markdown",
+      aliases: ["exportar", "markdown", "md", "descargar"],
+      icon: "export",
+      action: () => {
+        exportNotesMarkdown(materiaActiva);
+        setMensaje("Apuntes exportados en Markdown.");
+      },
+    },
+    {
+      id: "import-notes",
+      label: "Importar apuntes",
+      description: "Añadir apuntes desde un archivo .md",
+      aliases: ["importar", "markdown", "md", "subir"],
+      icon: "import",
+      action: () => fileInputRef.current?.click(),
+    },
+  ], [materiaActiva, materias.length, theme]);
+
+  useEffect(() => {
+    const handleShortcut = (event) => {
+      const modifier = event.ctrlKey || event.metaKey;
+
+      if (modifier && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setCommandOpen((current) => !current);
+        return;
+      }
+
+      if (commandOpen || isTypingTarget(event.target)) return;
+
+      if (event.ctrlKey && event.altKey && event.key.toLowerCase() === "m") {
+        event.preventDefault();
+        agregarMateria();
+      } else if (event.ctrlKey && event.altKey && event.key.toLowerCase() === "t") {
+        event.preventDefault();
+        agregarTema();
+      } else if (event.ctrlKey && event.altKey && event.key.toLowerCase() === "n") {
+        event.preventDefault();
+        agregarApunte();
+      }
+    };
+
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, [commandOpen, materiaActiva, materias.length]);
+
+  if (!materiaActiva) return null;
+
   const backgroundColor = theme === "dark"
     ? mixWithBlack(materiaActiva.color, 0.88)
     : mixWithWhite(materiaActiva.color, 0.91);
@@ -130,6 +265,14 @@ export default function App() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCommandOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              title="Abrir paleta de comandos (Ctrl/⌘ + K)"
+            >
+              <Command size={14} /> Comandos <span className="text-[10px] text-slate-400">Ctrl K</span>
+            </button>
             <button
               type="button"
               onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")}
@@ -185,6 +328,12 @@ export default function App() {
           {mensaje}
         </div>
       )}
+
+      <CommandPalette
+        open={commandOpen}
+        onClose={() => setCommandOpen(false)}
+        commands={commands}
+      />
 
       <DeleteSubjectModal
         materia={materiaAEliminar}
