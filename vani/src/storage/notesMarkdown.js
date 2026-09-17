@@ -136,7 +136,11 @@ function safeFilename(value) {
 export function exportNotesMarkdown(materia) {
   const sections = (materia.temas || []).flatMap((tema) =>
     (tema.tarjetas || []).map((tarjeta) => {
-      const meta = JSON.stringify({ title: tarjeta.titulo || "Apunte", topic: tema.nombre || "Sin tema" });
+      const meta = JSON.stringify({
+        title: tarjeta.titulo || "Apunte",
+        topic: tema.nombre || "Sin tema",
+        color: tarjeta.color || materia.color || "#3B82F6",
+      });
       const body = htmlToMarkdown(tarjeta.contenido || "");
       return `<!-- vani:note ${meta} -->\n\n${body}\n\n<!-- vani:end -->`;
     }),
@@ -157,12 +161,13 @@ export async function importNotesMarkdown(file) {
   const pattern = /<!--\s*vani:note\s+({.*?})\s*-->([\s\S]*?)<!--\s*vani:end\s*-->/g;
   let match;
   while ((match = pattern.exec(markdown)) !== null) {
-    let meta = { title: "Apunte importado", topic: "Importados" };
+    let meta = { title: "Apunte importado", topic: "Importados", color: "#3B82F6" };
     try { meta = { ...meta, ...JSON.parse(match[1]) }; } catch { /* metadatos editados */ }
     notes.push({
       id: `card-${Date.now()}-${notes.length}`,
       titulo: meta.title || "Apunte importado",
       topic: meta.topic || "Importados",
+      color: /^#[0-9A-F]{6}$/i.test(meta.color || "") ? meta.color : "#3B82F6",
       contenido: markdownToHtml(match[2].trim()),
     });
   }
@@ -171,6 +176,7 @@ export async function importNotesMarkdown(file) {
     id: `card-${Date.now()}`,
     titulo: file.name.replace(/\.md$/i, "") || "Apunte importado",
     topic: "Importados",
+    color: "#3B82F6",
     contenido: markdownToHtml(markdown.replace(/^#\s+.+\n+/, "").trim()),
   }];
 }
