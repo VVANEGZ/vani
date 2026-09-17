@@ -12,7 +12,7 @@ const toneClasses = {
   blue: "bg-blue-50 border-blue-100 text-blue-900",
 };
 
-export default function Sidebar({ materia, editandoEncuadre, setEditandoEncuadre, onUpdate }) {
+export default function Sidebar({ materia, editandoEncuadre, setEditandoEncuadre, onUpdate, onSaved }) {
   const addEvent = (tipo) => {
     onUpdate("fechas", [
       ...(materia.fechas || []),
@@ -31,6 +31,13 @@ export default function Sidebar({ materia, editandoEncuadre, setEditandoEncuadre
 
   const removeEvent = (id) => {
     onUpdate("fechas", (materia.fechas || []).filter((evento) => evento.id !== id));
+  };
+
+  const commitWithEnter = (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    event.currentTarget.blur();
+    onSaved?.();
   };
 
   return (
@@ -64,9 +71,12 @@ export default function Sidebar({ materia, editandoEncuadre, setEditandoEncuadre
         </section>
 
         <section>
-          <h2 className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-slate-500">
-            <Calendar size={14} /> Calendario
-          </h2>
+          <div className="mb-3">
+            <h2 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-slate-500">
+              <Calendar size={14} /> Calendario
+            </h2>
+            <p className="mt-1 text-[11px] text-slate-400">Los cambios se guardan automáticamente. Enter confirma y cierra el campo.</p>
+          </div>
           <div className="space-y-3">
             {GROUPS.map(({ tipo, titulo, tone }) => (
               <div key={tipo} className={`rounded-lg border p-2.5 ${toneClasses[tone]}`}>
@@ -84,6 +94,8 @@ export default function Sidebar({ materia, editandoEncuadre, setEditandoEncuadre
                           type="date"
                           value={evento.fecha || ""}
                           onChange={(e) => updateEvent(evento.id, "fecha", e.target.value)}
+                          onKeyDown={commitWithEnter}
+                          onBlur={() => onSaved?.()}
                           className="min-w-0 flex-1 rounded border border-slate-200 px-2 py-1 text-xs text-slate-700"
                           aria-label={`Fecha de ${evento.titulo || titulo}`}
                         />
@@ -95,6 +107,8 @@ export default function Sidebar({ materia, editandoEncuadre, setEditandoEncuadre
                         type="text"
                         value={evento.titulo || ""}
                         onChange={(e) => updateEvent(evento.id, "titulo", e.target.value)}
+                        onKeyDown={commitWithEnter}
+                        onBlur={() => onSaved?.()}
                         placeholder="Descripción..."
                         className="mt-2 w-full rounded border border-slate-200 px-2 py-1 text-xs text-slate-700 outline-none focus:border-blue-400"
                       />
