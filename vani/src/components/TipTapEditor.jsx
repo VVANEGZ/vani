@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Link from "@tiptap/extension-link";
 import { Bold, Italic, List, Heading1, Heading2, Heading3, Link2, Unlink } from "lucide-react";
 
 export default function TipTapEditor({ content, onUpdate }) {
@@ -9,14 +8,16 @@ export default function TipTapEditor({ content, onUpdate }) {
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
-      Link.configure({
-        openOnClick: false,
-        autolink: true,
-        linkOnPaste: true,
-        HTMLAttributes: {
-          target: "_blank",
-          rel: "noopener noreferrer",
+      StarterKit.configure({
+        heading: { levels: [1, 2, 3] },
+        link: {
+          openOnClick: false,
+          autolink: true,
+          linkOnPaste: true,
+          HTMLAttributes: {
+            target: "_blank",
+            rel: "noopener noreferrer",
+          },
         },
       }),
     ],
