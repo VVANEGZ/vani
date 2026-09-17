@@ -1,1 +1,119 @@
 @import "tailwindcss";
+
+html {
+  background: #f8fafc;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+.vani-editor {
+  font-size: 0.925rem;
+  line-height: 1.7;
+}
+
+.vani-editor > *:first-child {
+  margin-top: 0;
+}
+
+.vani-editor > *:last-child {
+  margin-bottom: 0;
+}
+
+.vani-editor p {
+  margin: 0.45rem 0;
+}
+
+.vani-editor h1,
+.vani-editor h2,
+.vani-editor h3 {
+  color: #0f172a;
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 1rem 0 0.45rem;
+}
+
+.vani-editor h1 {
+  font-size: 1.45rem;
+}
+
+.vani-editor h2 {
+  font-size: 1.2rem;
+}
+
+.vani-editor h3 {
+  font-size: 1.05rem;
+}
+
+.vani-editor strong {
+  font-weight: 700;
+}
+
+.vani-editor em {
+  font-style: italic;
+}
+
+.vani-editor ul,
+.vani-editor ol {
+  margin: 0.55rem 0;
+  padding-left: 1.4rem;
+}
+
+.vani-editor ul {
+  list-style: disc;
+}
+
+.vani-editor ol {
+  list-style: decimal;
+}
+
+.vani-editor li {
+  margin: 0.2rem 0;
+}
+
+.vani-editor blockquote {
+  margin: 0.75rem 0;
+  border-left: 3px solid #cbd5e1;
+  padding-left: 0.85rem;
+  color: #475569;
+}
+
+.vani-editor code {
+  border-radius: 0.3rem;
+  background: #f1f5f9;
+  padding: 0.1rem 0.3rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875em;
+}
+
+.vani-editor pre {
+  overflow-x: auto;
+  border-radius: 0.65rem;
+  background: #0f172a;
+  padding: 0.8rem;
+  color: #f8fafc;
+}
+
+.vani-editor pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+
+.vani-editor hr {
+  margin: 1rem 0;
+  border: 0;
+  border-top: 1px solid #e2e8f0;
+}
+
+.vani-editor .ProseMirror-selectednode {
+  outline: 2px solid #93c5fd;
+}
