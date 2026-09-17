@@ -24,13 +24,19 @@ export default function NotesGrid({ materia, onUpdate }) {
     <section className="flex-1 min-w-0 p-4 sm:p-5 lg:p-6">
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-3">
-          <input
-            type="color"
-            value={materia.color || "#3B82F6"}
-            onChange={(e) => onUpdate("color", e.target.value)}
-            className="h-9 w-9 shrink-0 cursor-pointer rounded border-0 bg-transparent p-0"
-            aria-label="Color de la materia"
-          />
+          <label
+            className="relative h-8 w-8 shrink-0 cursor-pointer rounded-full border-2 border-white shadow-sm ring-1 ring-slate-300 transition hover:scale-105"
+            style={{ backgroundColor: materia.color || "#3B82F6" }}
+            title="Cambiar color de la materia"
+          >
+            <input
+              type="color"
+              value={materia.color || "#3B82F6"}
+              onChange={(e) => onUpdate("color", e.target.value)}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              aria-label="Color de la materia"
+            />
+          </label>
           <input
             type="text"
             value={materia.nombre}
