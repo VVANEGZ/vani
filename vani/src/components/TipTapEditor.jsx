@@ -1,52 +1,94 @@
-import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import { Bold, Italic, List, Heading2 } from 'lucide-react';
+import { useState } from "react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import { Bold, Italic, List, Heading1, Heading2, Heading3, Link2, Unlink } from "lucide-react";
 
 export default function TipTapEditor({ content, onUpdate }) {
+  const [isEmpty, setIsEmpty] = useState(!content);
+
   const editor = useEditor({
-    extensions: [StarterKit],
-    content: content || '<p>Escribe aquí tus notas...</p>',
+    extensions: [
+      StarterKit.configure({
+        heading: { levels: [1, 2, 3] },
+        link: {
+          openOnClick: false,
+          autolink: true,
+          linkOnPaste: true,
+          HTMLAttributes: {
+            target: "_blank",
+            rel: "noopener noreferrer",
+          },
+        },
+      }),
+    ],
+    content: content || "",
     editorProps: {
       attributes: {
-        class: 'prose prose-sm focus:outline-none min-h-[140px] text-gray-700 p-2',
+        class: "vani-editor focus:outline-none min-h-[140px] text-slate-700 p-3",
       },
     },
-    onUpdate: ({ editor }) => {
-      onUpdate(editor.getHTML());
+    onCreate: ({ editor: currentEditor }) => setIsEmpty(currentEditor.isEmpty),
+    onUpdate: ({ editor: currentEditor }) => {
+      setIsEmpty(currentEditor.isEmpty);
+      onUpdate(currentEditor.getHTML());
     },
   });
 
   if (!editor) return null;
 
+  const buttonClass = (active) =>
+    `rounded p-1.5 transition-colors hover:bg-slate-200 ${active ? "bg-slate-300 text-slate-950" : "text-slate-600"}`;
+
+  const setLink = () => {
+    const previousUrl = editor.getAttributes("link").href || "";
+    const url = window.prompt("Pega la URL del enlace:", previousUrl);
+    if (url === null) return;
+    if (!url.trim()) {
+      editor.chain().focus().extendMarkRange("link").unsetLink().run();
+      return;
+    }
+
+    const normalized = /^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`;
+    editor.chain().focus().extendMarkRange("link").setLink({ href: normalized }).run();
+  };
+
   return (
-    <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
-      <div className="flex gap-1 bg-gray-50 border-b border-gray-200 p-1.5">
-        <button
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          className={`p-1.5 rounded hover:bg-gray-200 ${editor.isActive('bold') ? 'bg-gray-300 font-bold' : ''}`}
-        >
-          <Bold size={14} />
+    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="flex flex-wrap gap-1 border-b border-slate-200 bg-slate-50 p-1.5" aria-label="Formato de notas">
+        <button type="button" title="Negrita" aria-label="Negrita" onClick={() => editor.chain().focus().toggleBold().run()} className={buttonClass(editor.isActive("bold"))}>
+          <Bold size={15} />
         </button>
-        <button
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          className={`p-1.5 rounded hover:bg-gray-200 ${editor.isActive('italic') ? 'bg-gray-300' : ''}`}
-        >
-          <Italic size={14} />
+        <button type="button" title="Cursiva" aria-label="Cursiva" onClick={() => editor.chain().focus().toggleItalic().run()} className={buttonClass(editor.isActive("italic"))}>
+          <Italic size={15} />
         </button>
-        <button
-          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-          className={`p-1.5 rounded hover:bg-gray-200 ${editor.isActive('heading', { level: 2 }) ? 'bg-gray-300' : ''}`}
-        >
-          <Heading2 size={14} />
+        <button type="button" title="Título 1" aria-label="Título 1" onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} className={buttonClass(editor.isActive("heading", { level: 1 }))}>
+          <Heading1 size={15} />
         </button>
-        <button
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          className={`p-1.5 rounded hover:bg-gray-200 ${editor.isActive('bulletList') ? 'bg-gray-300' : ''}`}
-        >
-          <List size={14} />
+        <button type="button" title="Título 2" aria-label="Título 2" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} className={buttonClass(editor.isActive("heading", { level: 2 }))}>
+          <Heading2 size={15} />
+        </button>
+        <button type="button" title="Título 3" aria-label="Título 3" onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} className={buttonClass(editor.isActive("heading", { level: 3 }))}>
+          <Heading3 size={15} />
+        </button>
+        <button type="button" title="Lista" aria-label="Lista" onClick={() => editor.chain().focus().toggleBulletList().run()} className={buttonClass(editor.isActive("bulletList"))}>
+          <List size={15} />
+        </button>
+        <button type="button" title="Añadir o editar enlace" aria-label="Añadir o editar enlace" onClick={setLink} className={buttonClass(editor.isActive("link"))}>
+          <Link2 size={15} />
+        </button>
+        <button type="button" title="Quitar enlace" aria-label="Quitar enlace" disabled={!editor.isActive("link")} onClick={() => editor.chain().focus().unsetLink().run()} className={`${buttonClass(false)} disabled:cursor-not-allowed disabled:opacity-35`}>
+          <Unlink size={15} />
         </button>
       </div>
-      <EditorContent editor={editor} />
+
+      <div className="relative">
+        {isEmpty && (
+          <span className="pointer-events-none absolute left-3 top-3 z-10 text-sm text-slate-400">
+            Escribe aquí tus notas… Prueba #, ##, ### o - al inicio, como en Obsidian.
+          </span>
+        )}
+        <EditorContent editor={editor} />
+      </div>
     </div>
   );
 }

@@ -1,31 +1,31 @@
-import { Plus, X } from 'lucide-react';
+import { Plus, X } from "lucide-react";
 
 export default function TabBar({ materias, activaId, onSelect, onAdd, onDelete }) {
   return (
-    <div className="flex items-center bg-gray-200 px-3 pt-2 gap-1.5 border-b border-gray-300 overflow-x-auto">
+    <div className="flex items-center gap-1.5 overflow-x-auto border-b border-slate-300 bg-slate-200 px-2 pt-2 sm:px-3">
       {materias.map((materia) => {
         const esActiva = materia.id === activaId;
         return (
           <div
             key={materia.id}
             onClick={() => onSelect(materia.id)}
-            /* AQUÍ ESTÁ EL ATRIBUTO DE COLOR CORRECTAMENTE ASIGNADO */
-            style={{ backgroundColor: esActiva ? (materia.color || '#e5e7eb') : '#d1d5db' }}
-            className={`group flex items-center justify-between gap-2 px-4 py-2 text-sm font-medium rounded-t-lg cursor-pointer transition-all border-t border-x ${
+            style={{ backgroundColor: esActiva ? materia.color || "#3B82F6" : "#d1d5db" }}
+            className={`group flex max-w-[210px] shrink-0 cursor-pointer items-center justify-between gap-2 rounded-t-lg border-x border-t px-3 py-2 text-sm font-medium transition-all sm:px-4 ${
               esActiva
-                ? 'text-gray-900 border-gray-400 shadow-sm'
-                : 'text-gray-600 border-transparent hover:brightness-95'
+                ? "border-slate-400 text-slate-950 shadow-sm"
+                : "border-transparent text-slate-700 hover:brightness-95"
             }`}
           >
-            <span className="truncate max-w-[150px]">{materia.nombre || 'Nueva Materia'}</span>
-            
+            <span className="truncate">{materia.nombre || "Nueva Materia"}</span>
             {materias.length > 1 && (
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onDelete(materia.id);
                 }}
-                className="opacity-0 group-hover:opacity-100 hover:bg-red-500 hover:text-white rounded p-0.5 transition-colors"
+                className="rounded p-0.5 opacity-70 transition-colors hover:bg-red-500 hover:text-white group-hover:opacity-100"
+                aria-label={`Eliminar ${materia.nombre || "materia"}`}
               >
                 <X size={13} />
               </button>
@@ -33,10 +33,7 @@ export default function TabBar({ materias, activaId, onSelect, onAdd, onDelete }
           </div>
         );
       })}
-      <button
-        onClick={onAdd}
-        className="p-1.5 text-gray-600 hover:bg-gray-300 rounded-md transition-colors"
-      >
+      <button type="button" onClick={onAdd} className="shrink-0 rounded-md p-1.5 text-slate-700 transition-colors hover:bg-slate-300" aria-label="Añadir materia">
         <Plus size={16} />
       </button>
     </div>
