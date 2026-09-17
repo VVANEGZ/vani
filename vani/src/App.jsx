@@ -1,376 +1,169 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Download, Upload } from "lucide-react";
 import TabBar from "./components/TabBar";
-import TipTapEditor from "./components/TipTapEditor";
-import {
-  Calendar,
-  BookOpen,
-  PlusCircle,
-  MessageCircle,
-  Plus,
-  X,
-} from "lucide-react";
+import Sidebar from "./components/Sidebar";
+import NotesGrid from "./components/NotesGrid";
+import DeleteSubjectModal from "./components/DeleteSubjectModal";
+import { exportBackup, importBackup, loadData, saveData } from "./storage/storage";
 
-const MATERIAS_INICIALES = [
-  {
-    id: "mat-1",
-    nombre: "Materia 1",
-    encuadre: "40% Exámenes\n30% Proyecto integrador\n30% Tareas y prácticas",
-    fechas: [
-      { tipo: "examen", texto: "20 Sep: Primer Parcial" },
-      { tipo: "proyecto", texto: "15 Nov: Entrega Proyecto" },
-    ],
-    tarjetas: [{ id: "card-1", titulo: "Apuntes Generales", contenido: "" }],
-  },
-];
+function mixWithWhite(hex, ratio = 0.9) {
+  const safeHex = /^#[0-9A-F]{6}$/i.test(hex || "") ? hex : "#3B82F6";
+  const r = parseInt(safeHex.slice(1, 3), 16);
+  const g = parseInt(safeHex.slice(3, 5), 16);
+  const b = parseInt(safeHex.slice(5, 7), 16);
+  const mix = (value) => Math.round(value + (255 - value) * ratio);
+  return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
+}
 
 export default function App() {
-  const [materias, setMaterias] = useState(() => {
-    const saved = localStorage.getItem("study_hub_data");
-    return saved ? JSON.parse(saved) : MATERIAS_INICIALES;
-  });
-
+  const initialData = useMemo(() => loadData(), []);
+  const [materias, setMaterias] = useState(initialData.materias);
+  const [activaId, setActivaId] = useState(initialData.materias[0]?.id || "");
   const [editandoEncuadre, setEditandoEncuadre] = useState(false);
-  const [activaId, setActivaId] = useState(materias[0]?.id || "");
-
-  useEffect(() => {
-    localStorage.setItem("study_hub_data", JSON.stringify(materias));
-  }, [materias]);
+  const [materiaAEliminar, setMateriaAEliminar] = useState(null);
+  const [mensaje, setMensaje] = useState("");
+  const fileInputRef = useRef(null);
 
   const materiaActiva = materias.find((m) => m.id === activaId) || materias[0];
+
   useEffect(() => {
-    document.title = materiaActiva.nombre;
+    saveData(materias);
+  }, [materias]);
+
+  useEffect(() => {
+    if (materiaActiva) document.title = `${materiaActiva.nombre} · Vani`;
   }, [materiaActiva]);
+
+  useEffect(() => {
+    if (!mensaje) return undefined;
+    const timer = setTimeout(() => setMensaje(""), 3000);
+    return () => clearTimeout(timer);
+  }, [mensaje]);
+
+  if (!materiaActiva) return null;
 
   const actualizarMateriaActiva = (campo, valor) => {
     setMaterias((prev) =>
-      prev.map((m) => (m.id === activaId ? { ...m, [campo]: valor } : m)),
+      prev.map((materia) =>
+        materia.id === activaId ? { ...materia, [campo]: valor } : materia,
+      ),
     );
   };
 
-  const agregarTarjeta = () => {
-    const nuevaTarjeta = {
-      id: `card-${Date.now()}`,
-      titulo: "Nuevo Bloque de Notas",
-      contenido: "",
+  const agregarMateria = () => {
+    const nueva = {
+      id: `mat-${Date.now()}`,
+      nombre: `Materia ${materias.length + 1}`,
+      color: "#3B82F6",
+      encuadre: "",
+      fechas: [],
+      tarjetas: [],
     };
-    actualizarMateriaActiva("tarjetas", [
-      ...materiaActiva.tarjetas,
-      nuevaTarjeta,
-    ]);
+    setMaterias((prev) => [...prev, nueva]);
+    setActivaId(nueva.id);
+    setEditandoEncuadre(false);
   };
 
-  const actualizarContenidoTarjeta = (tarjetaId, nuevoContenido) => {
-    const actualizadas = materiaActiva.tarjetas.map((t) =>
-      t.id === tarjetaId ? { ...t, contenido: nuevoContenido } : t,
+  const confirmarEliminacion = () => {
+    if (!materiaAEliminar) return;
+    const filtradas = materias.filter((m) => m.id !== materiaAEliminar.id);
+    setMaterias(filtradas);
+    setActivaId((current) =>
+      current === materiaAEliminar.id ? filtradas[0]?.id || "" : current,
     );
-    actualizarMateriaActiva("tarjetas", actualizadas);
+    setMateriaAEliminar(null);
+    setMensaje("Materia eliminada.");
   };
+
+  const handleImport = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const importedSubjects = await importBackup(file);
+      setMaterias(importedSubjects);
+      setActivaId(importedSubjects[0]?.id || "");
+      setMensaje("Respaldo importado correctamente.");
+    } catch (error) {
+      console.error(error);
+      setMensaje("No se pudo importar ese respaldo.");
+    } finally {
+      event.target.value = "";
+    }
+  };
+
+  const backgroundColor = mixWithWhite(materiaActiva.color, 0.91);
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100 font-sans">
-      <TabBar
-        materias={materias}
-        activaId={activaId}
-        onSelect={setActivaId}
-        onAdd={() => {
-          const nueva = {
-            id: `mat-${Date.now()}`,
-            nombre: `Materia ${materias.length + 1}`,
-            encuadre: "Especifica aquí los criterios de evaluación...",
-            fechas: [],
-            tarjetas: [],
-          };
-          setMaterias([...materias, nueva]);
-          setActivaId(nueva.id);
-        }}
-        onDelete={(id) => {
-          const filtradas = materias.filter((m) => m.id !== id);
-          setMaterias(filtradas);
-          setActivaId(filtradas[0]?.id || "");
-        }}
-      />
-
-      <div className="flex flex-1 overflow-hidden">
-        {/* Panel Lateral Fijo: Encuadre y Fechas */}
-        <aside className="w-80 bg-white border-r border-gray-200 p-5 flex flex-col gap-6 overflow-y-auto shrink-0">
-          {/* ENCUADRE BLOQUEABLE */}
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                <BookOpen size={14} /> Encuadre
-              </h2>
-              <button
-                onClick={() => setEditandoEncuadre(!editandoEncuadre)}
-                className={`text-xs font-semibold px-3 py-1 rounded-md transition-colors ${
-                  editandoEncuadre
-                    ? "bg-blue-200 text-blue-800 hover:bg-blue-300"
-                    : "bg-slate-200 text-slate-600 hover:bg-slate-300"
-                }`}
-              >
-                {editandoEncuadre ? "Guardar" : "Editar"}
-              </button>
-            </div>
-
-            {editandoEncuadre ? (
-              <textarea
-                className="w-full h-32 p-2.5 text-sm text-slate-700 bg-white border-2 border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none resize-none transition-colors"
-                value={materiaActiva.encuadre || ""}
-                onChange={(e) =>
-                  actualizarMateriaActiva("encuadre", e.target.value)
-                }
-                placeholder="Escribe aquí las reglas, porcentajes..."
-              />
-            ) : (
-              <div className="w-full min-h-[8rem] text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">
-                {materiaActiva.encuadre ||
-                  "No hay encuadre definido. Haz clic en Editar."}
-              </div>
-            )}
+    <div className="min-h-screen bg-slate-100 font-sans text-slate-900">
+      <header className="sticky top-0 z-30 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-2 sm:px-4">
+          <div>
+            <p className="text-sm font-bold tracking-wide text-slate-900">Vani</p>
+            <p className="text-xs text-slate-500">Tus materias y apuntes, en un solo lugar</p>
           </div>
 
-          {/* FECHAS IMPORTANTES POR BLOQUES */}
-          <div className="mt-2">
-            <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5 mb-3">
-              <Calendar size={14} /> Calendario
-            </h2>
-
-            <div className="space-y-3">
-              {/* Categoría: Exámenes */}
-              <div className="bg-red-50 border border-red-100 p-2.5 rounded-lg">
-                <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-xs font-bold text-red-800 uppercase">
-                    Exámenes
-                  </span>
-                  <button
-                    onClick={() =>
-                      actualizarMateriaActiva("fechas", [
-                        ...(materiaActiva.fechas || []),
-                        { tipo: "examen", texto: "Nuevo examen..." },
-                      ])
-                    }
-                    className="text-red-600 hover:bg-red-200 p-0.5 rounded"
-                  >
-                    <Plus size={14} />
-                  </button>
-                </div>
-                <ul className="space-y-1">
-                  {(materiaActiva.fechas || []).map(
-                    (f, i) =>
-                      f.tipo === "examen" && (
-                        <li
-                          key={i}
-                          className="flex gap-2 bg-white border border-red-100 rounded px-2 py-1"
-                        >
-                          <input
-                            type="text"
-                            value={f.texto}
-                            onChange={(e) => {
-                              const n = [...materiaActiva.fechas];
-                              n[i] = { ...n[i], texto: e.target.value };
-                              actualizarMateriaActiva("fechas", n);
-                            }}
-                            className="text-xs text-red-900 w-full focus:outline-none"
-                          />
-                          <button
-                            onClick={() => {
-                              if (window.confirm("¿Borrar examen?")) {
-                                actualizarMateriaActiva(
-                                  "fechas",
-                                  materiaActiva.fechas.filter(
-                                    (_, idx) => idx !== i,
-                                  ),
-                                );
-                              }
-                            }}
-                            className="text-red-400 hover:text-red-700"
-                          >
-                            <X size={12} />
-                          </button>
-                        </li>
-                      ),
-                  )}
-                </ul>
-              </div>
-
-              {/* Categoría: Proyectos */}
-              <div className="bg-purple-50 border border-purple-100 p-2.5 rounded-lg">
-                <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-xs font-bold text-purple-800 uppercase">
-                    Proyectos
-                  </span>
-                  <button
-                    onClick={() =>
-                      actualizarMateriaActiva("fechas", [
-                        ...(materiaActiva.fechas || []),
-                        { tipo: "proyecto", texto: "Nuevo proyecto..." },
-                      ])
-                    }
-                    className="text-purple-600 hover:bg-purple-200 p-0.5 rounded"
-                  >
-                    <Plus size={14} />
-                  </button>
-                </div>
-                <ul className="space-y-1">
-                  {(materiaActiva.fechas || []).map(
-                    (f, i) =>
-                      f.tipo === "proyecto" && (
-                        <li
-                          key={i}
-                          className="flex gap-2 bg-white border border-purple-100 rounded px-2 py-1"
-                        >
-                          <input
-                            type="text"
-                            value={f.texto}
-                            onChange={(e) => {
-                              const n = [...materiaActiva.fechas];
-                              n[i] = { ...n[i], texto: e.target.value };
-                              actualizarMateriaActiva("fechas", n);
-                            }}
-                            className="text-xs text-purple-900 w-full focus:outline-none"
-                          />
-                          <button
-                            onClick={() => {
-                              if (window.confirm("¿Borrar proyecto?")) {
-                                actualizarMateriaActiva(
-                                  "fechas",
-                                  materiaActiva.fechas.filter(
-                                    (_, idx) => idx !== i,
-                                  ),
-                                );
-                              }
-                            }}
-                            className="text-purple-400 hover:text-purple-700"
-                          >
-                            <X size={12} />
-                          </button>
-                        </li>
-                      ),
-                  )}
-                </ul>
-              </div>
-
-              {/* Categoría: Tareas */}
-              <div className="bg-blue-50 border border-blue-100 p-2.5 rounded-lg">
-                <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-xs font-bold text-blue-800 uppercase">
-                    Tareas
-                  </span>
-                  <button
-                    onClick={() =>
-                      actualizarMateriaActiva("fechas", [
-                        ...(materiaActiva.fechas || []),
-                        { tipo: "tarea", texto: "Nueva tarea..." },
-                      ])
-                    }
-                    className="text-blue-600 hover:bg-blue-200 p-0.5 rounded"
-                  >
-                    <Plus size={14} />
-                  </button>
-                </div>
-                <ul className="space-y-1">
-                  {(materiaActiva.fechas || []).map(
-                    (f, i) =>
-                      f.tipo === "tarea" && (
-                        <li
-                          key={i}
-                          className="flex gap-2 bg-white border border-blue-100 rounded px-2 py-1"
-                        >
-                          <input
-                            type="text"
-                            value={f.texto}
-                            onChange={(e) => {
-                              const n = [...materiaActiva.fechas];
-                              n[i] = { ...n[i], texto: e.target.value };
-                              actualizarMateriaActiva("fechas", n);
-                            }}
-                            className="text-xs text-blue-900 w-full focus:outline-none"
-                          />
-                          <button
-                            onClick={() => {
-                              if (window.confirm("¿Borrar tarea?")) {
-                                actualizarMateriaActiva(
-                                  "fechas",
-                                  materiaActiva.fechas.filter(
-                                    (_, idx) => idx !== i,
-                                  ),
-                                );
-                              }
-                            }}
-                            className="text-blue-400 hover:text-blue-700"
-                          >
-                            <X size={12} />
-                          </button>
-                        </li>
-                      ),
-                  )}
-                </ul>
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        {/* Tablero de Tarjetas / Bloques */}
-        <main className="flex-1 p-6 overflow-y-auto bg-gray-100">
-          <div className="flex justify-between items-center mb-6">
-            <div className="flex items-center gap-3">
-              {/* Selector de color */}
-              <input
-                type="color"
-                value={materiaActiva.color || "#3B82F6"}
-                onChange={(e) =>
-                  actualizarMateriaActiva("color", e.target.value)
-                }
-                className="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent"
-              />
-              {/* Campo de texto editable */}
-              <input
-                type="text"
-                value={materiaActiva.nombre}
-                onChange={(e) =>
-                  actualizarMateriaActiva("nombre", e.target.value)
-                }
-                placeholder="Nombre de la materia..."
-                className="text-2xl font-bold text-gray-800 bg-transparent border-b-2 border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none px-1 py-1 w-full"
-              />
-            </div>
+          <div className="flex items-center gap-2">
             <button
-              onClick={agregarTarjeta}
-              className="flex items-center gap-1.5 text-xs font-semibold bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 transition"
+              type="button"
+              onClick={() => exportBackup(materias)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
             >
-              <PlusCircle size={14} /> Añadir Bloque
+              <Download size={14} /> Exportar
             </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              <Upload size={14} /> Importar
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={handleImport}
+            />
           </div>
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {materiaActiva.tarjetas.map((tarjeta) => (
-              <div
-                key={tarjeta.id}
-                className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex flex-col gap-3"
-              >
-                <input
-                  type="text"
-                  value={tarjeta.titulo}
-                  onChange={(e) => {
-                    const actualizadas = materiaActiva.tarjetas.map((t) =>
-                      t.id === tarjeta.id
-                        ? { ...t, titulo: e.target.value }
-                        : t,
-                    );
-                    actualizarMateriaActiva("tarjetas", actualizadas);
-                  }}
-                  className="font-semibold text-gray-800 focus:outline-none border-b border-transparent focus:border-gray-300 pb-1"
-                />
-                <TipTapEditor
-                  content={tarjeta.contenido}
-                  onUpdate={(html) =>
-                    actualizarContenidoTarjeta(tarjeta.id, html)
-                  }
-                />
-              </div>
-            ))}
-          </div>
-        </main>
+        <TabBar
+          materias={materias}
+          activaId={activaId}
+          onSelect={(id) => {
+            setActivaId(id);
+            setEditandoEncuadre(false);
+          }}
+          onAdd={agregarMateria}
+          onDelete={(id) => setMateriaAEliminar(materias.find((m) => m.id === id) || null)}
+        />
+      </header>
+
+      <div
+        className="flex min-h-[calc(100vh-106px)] flex-col lg:flex-row"
+        style={{ backgroundColor }}
+      >
+        <Sidebar
+          materia={materiaActiva}
+          editandoEncuadre={editandoEncuadre}
+          setEditandoEncuadre={setEditandoEncuadre}
+          onUpdate={actualizarMateriaActiva}
+        />
+        <NotesGrid materia={materiaActiva} onUpdate={actualizarMateriaActiva} />
       </div>
+
+      {mensaje && (
+        <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-lg" role="status">
+          {mensaje}
+        </div>
+      )}
+
+      <DeleteSubjectModal
+        materia={materiaAEliminar}
+        onCancel={() => setMateriaAEliminar(null)}
+        onConfirm={confirmarEliminacion}
+      />
     </div>
   );
 }
