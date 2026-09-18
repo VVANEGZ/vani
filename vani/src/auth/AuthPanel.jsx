@@ -90,6 +90,8 @@ export default function AuthPanel() {
     setBusy(false);
   };
 
+  if (!supabase) return <span className="text-xs text-slate-500">Modo local</span>;
+
   return (
     <>
       <div className="flex min-w-0 items-center gap-2">
