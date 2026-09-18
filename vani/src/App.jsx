@@ -6,7 +6,9 @@ import NotesGrid from "./components/NotesGrid";
 import DeleteSubjectModal from "./components/DeleteSubjectModal";
 import CommandPalette from "./components/CommandPalette";
 import AuthPanel from "./auth/AuthPanel.jsx";
-import { loadData, saveData } from "./storage/storage";
+import { useAuth } from './auth/AuthProvider';
+import { useWorkspace } from './storage/useWorkspace';
+import SyncStatus from './components/SyncStatus';
 import { exportNotesMarkdown, importNotesMarkdown } from "./storage/notesMarkdown";
 
 function mixWithWhite(hex, ratio = 0.9) {
@@ -35,9 +37,15 @@ function isTypingTarget(target) {
 }
 
 export default function App() {
-  const initialData = useMemo(() => loadData(), []);
-  const [materias, setMaterias] = useState(initialData.materias);
-  const [activaId, setActivaId] = useState(initialData.materias[0]?.id || "");
+  const { user, loading } = useAuth();
+  if (loading) return <p className="p-6">Cargando sesión…</p>;
+  return <Workspace key={user?.id || 'guest'} userId={user?.id} />;
+}
+
+function Workspace({ userId }) {
+  const sync = useWorkspace(userId);
+  const { materias, setMaterias } = sync;
+  const [activaId, setActivaId] = useState("");
   const [materiaAEliminar, setMateriaAEliminar] = useState(null);
   const [mensaje, setMensaje] = useState("");
   const [theme, setTheme] = useState(() => localStorage.getItem("vani_theme") || "light");
@@ -46,9 +54,7 @@ export default function App() {
 
   const materiaActiva = materias.find((m) => m.id === activaId) || materias[0];
 
-  useEffect(() => {
-    saveData(materias);
-  }, [materias]);
+
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -67,11 +73,12 @@ export default function App() {
 
   const actualizarMateriaActiva = (campo, valor) => {
     setMaterias((prev) =>
-      prev.map((materia) => materia.id === activaId ? { ...materia, [campo]: valor } : materia),
+      prev.map((materia) => materia.id === materiaActiva?.id ? { ...materia, [campo]: valor } : materia),
     );
   };
 
   const agregarMateria = () => {
+    if (!sync.ready) return;
     const nueva = {
       id: `mat-${Date.now()}`,
       nombre: `Materia ${materias.length + 1}`,
@@ -208,6 +215,7 @@ export default function App() {
       aliases: ["exportar", "markdown", "md", "descargar"],
       icon: "export",
       action: () => {
+        if (!materiaActiva) return;
         exportNotesMarkdown(materiaActiva);
         setMensaje("Apuntes exportados en Markdown.");
       },
@@ -250,11 +258,11 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleShortcut);
   }, [commandOpen, materiaActiva, materias.length]);
 
-  if (!materiaActiva) return null;
+
 
   const backgroundColor = theme === "dark"
-    ? mixWithBlack(materiaActiva.color, 0.88)
-    : mixWithWhite(materiaActiva.color, 0.91);
+    ? mixWithBlack(materiaActiva?.color, 0.88)
+    : mixWithWhite(materiaActiva?.color, 0.91);
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
@@ -286,7 +294,8 @@ export default function App() {
             <button
               type="button"
               onClick={() => {
-                exportNotesMarkdown(materiaActiva);
+                if (!materiaActiva) return;
+        exportNotesMarkdown(materiaActiva);
                 setMensaje("Apuntes exportados en Markdown.");
               }}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -309,21 +318,22 @@ export default function App() {
 
         <TabBar
           materias={materias}
-          activaId={activaId}
+          activaId={materiaActiva?.id || ""}
           onSelect={setActivaId}
           onAdd={agregarMateria}
           onDelete={(id) => setMateriaAEliminar(materias.find((m) => m.id === id) || null)}
         />
       </header>
 
-      <div className="flex min-h-[calc(100vh-106px)] flex-col transition-colors lg:flex-row" style={{ backgroundColor }}>
+      <SyncStatus sync={sync} signedIn={Boolean(userId)} />
+      {!sync.ready ? <p className="p-6">Esperando tus apuntes. Si no hay conexión, pulsa Reintentar.</p> : !materiaActiva ? <div className="p-6"><p>Aún no hay materias en esta cuenta. Importa tus apuntes de este navegador o crea una materia.</p><button className="mt-3 rounded border p-2" onClick={agregarMateria}>Crear materia</button></div> : <div className="flex min-h-[calc(100vh-106px)] flex-col transition-colors lg:flex-row" style={{ backgroundColor }}>
         <Sidebar
           materia={materiaActiva}
           onUpdate={actualizarMateriaActiva}
           onSaved={() => setMensaje("Cambios guardados.")}
         />
         <NotesGrid materia={materiaActiva} onUpdate={actualizarMateriaActiva} />
-      </div>
+      </div>}
 
       {mensaje && (
         <div className="fixed bottom-4 left-1/2 z-50 max-w-[90vw] -translate-x-1/2 break-words rounded-full bg-slate-900 px-4 py-2 text-center text-sm font-medium text-white shadow-lg dark:bg-slate-100 dark:text-slate-900" role="status">

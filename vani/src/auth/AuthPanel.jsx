@@ -141,7 +141,7 @@ export default function AuthPanel() {
                   {mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  Por ahora, tus materias y apuntes siguen guardados localmente en este dispositivo.
+                  Inicia sesión para sincronizar tus materias y apuntes entre dispositivos. Podrás importar los apuntes locales a tu cuenta.
                 </p>
               </div>
               <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Cerrar">

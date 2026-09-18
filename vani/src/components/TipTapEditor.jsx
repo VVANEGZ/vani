@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Bold, Italic, List, Heading1, Heading2, Heading3, Link2, Unlink } from "lucide-react";
@@ -33,6 +33,13 @@ export default function TipTapEditor({ content, onUpdate }) {
       onUpdate(currentEditor.getHTML());
     },
   });
+
+  useEffect(() => {
+    if (editor && editor.getHTML() !== (content || '')) {
+      editor.commands.setContent(content || '', { emitUpdate: false });
+      setIsEmpty(editor.isEmpty);
+    }
+  }, [editor, content]);
 
   if (!editor) return null;
 

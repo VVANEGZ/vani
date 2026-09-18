@@ -12,7 +12,7 @@ Aquí no hay nada de eso. Es minimalista a propósito.
 - Bloques de notas por materia, tipo tarjetas, donde puedes escribir libremente (editor con texto enriquecido).
 - Le puedes poner un color a cada materia para diferenciarlas rápido.
 
-Todo se guarda solo, en el navegador, así que no necesitas cuenta ni internet para usarla.
+Sin cuenta, todo se guarda en el navegador. Al iniciar sesión, puedes importar tus apuntes locales y sincronizar materias, encuadre, calendario y notas entre dispositivos con Supabase.
 
 ## Por qué así
 
