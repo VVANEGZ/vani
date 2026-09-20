@@ -1,4 +1,6 @@
-import { BookOpen, Calendar, Plus, Trash2, X } from "lucide-react";
+import CriterionCard from "./CriterionCard";
+import { criteriaTotal } from "../storage/criteria.js";
+import { BookOpen, Calendar, Plus, X } from "lucide-react";
 
 const GROUPS = [
   { tipo: "examen", titulo: "Exámenes", tone: "red" },
@@ -14,7 +16,7 @@ const toneClasses = {
 
 export default function Sidebar({ materia, onUpdate, onSaved }) {
   const criterios = materia.criterios || [];
-  const total = criterios.reduce((sum, criterio) => sum + (Number(criterio.porcentaje) || 0), 0);
+  const total = criteriaTotal(criterios);
   const restante = Math.max(0, 100 - total);
 
   const updateCriteria = (next) => onUpdate("criterios", next);
@@ -23,20 +25,6 @@ export default function Sidebar({ materia, onUpdate, onSaved }) {
     if (total >= 100) return;
     updateCriteria([...criterios, { id: `criterion-${Date.now()}`, nombre: "Nuevo criterio", porcentaje: 0 }]);
   };
-
-  const updateCriterion = (id, field, value) => {
-    if (field === "porcentaje") {
-      const current = criterios.find((c) => c.id === id)?.porcentaje || 0;
-      const others = total - Number(current || 0);
-      const maxAllowed = Math.max(0, 100 - others);
-      const safeValue = Math.min(maxAllowed, Math.max(0, Number(value) || 0));
-      updateCriteria(criterios.map((c) => c.id === id ? { ...c, porcentaje: safeValue } : c));
-      return;
-    }
-    updateCriteria(criterios.map((c) => c.id === id ? { ...c, [field]: value } : c));
-  };
-
-  const removeCriterion = (id) => updateCriteria(criterios.filter((c) => c.id !== id));
 
   const addEvent = (tipo) => {
     onUpdate("fechas", [...(materia.fechas || []), { id: `event-${Date.now()}`, tipo, fecha: "", titulo: "" }]);
@@ -70,30 +58,19 @@ export default function Sidebar({ materia, onUpdate, onSaved }) {
 
           <div className="space-y-2">
             {criterios.map((criterio) => (
-              <div key={criterio.id} className="rounded-lg border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-950">
-                <input
-                  value={criterio.nombre}
-                  onChange={(e) => updateCriterion(criterio.id, "nombre", e.target.value)}
-                  className="w-full break-words bg-transparent text-sm font-medium text-slate-700 outline-none dark:text-slate-200"
-                  aria-label="Nombre del criterio"
-                />
-                <div className="mt-2 flex items-center gap-2">
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="1"
-                    value={criterio.porcentaje}
-                    onChange={(e) => updateCriterion(criterio.id, "porcentaje", e.target.value)}
-                    className="min-w-0 flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-sm text-slate-700 outline-none focus:border-blue-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                    aria-label={`Porcentaje de ${criterio.nombre}`}
-                  />
-                  <span className="text-sm text-slate-500 dark:text-slate-400">%</span>
-                  <button onClick={() => removeCriterion(criterio.id)} className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40" aria-label={`Eliminar ${criterio.nombre}`}>
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
+              <CriterionCard
+                key={`${materia.id}-${criterio.id}`}
+                criterio={criterio}
+                criterios={criterios}
+                onSave={(updated) => {
+                  updateCriteria(criterios.map((item) => item.id === updated.id ? updated : item));
+                  onSaved?.();
+                }}
+                onDelete={() => {
+                  updateCriteria(criterios.filter((item) => item.id !== criterio.id));
+                  onSaved?.();
+                }}
+              />
             ))}
           </div>
 
