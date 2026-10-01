@@ -1,9 +1,15 @@
 import { useState } from "react";
-import { FolderPlus, PlusCircle, Trash2 } from "lucide-react";
+import { FolderPlus, PlusCircle, Trash2, LayoutGrid, List, ChevronDown, ChevronUp, Maximize2, Minimize2 } from "lucide-react";
 import TipTapEditor from "./TipTapEditor";
 import ConfirmModal from "./ConfirmModal";
 
+const TOPIC_COLORS = ["#647C68", "#667FA0", "#A47962", "#8C729C", "#9B8A52"];
+
 export default function NotesGrid({ materia, onUpdate }) {
+  const [activeCard, setActiveCard] = useState(null);
+  const [view, setView] = useState(() => localStorage.getItem("vani_notes_view") || "grid");
+  const [collapsed, setCollapsed] = useState({});
+  const [wide, setWide] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   const updateTopics = (updater) => onUpdate("temas", updater(materia.temas || []));
@@ -24,6 +30,7 @@ export default function NotesGrid({ materia, onUpdate }) {
       contenido: "",
       color: materia.color || "#3B82F6",
     };
+    setActiveCard(`${materia.id}-${topicId}-${nueva.id}`);
     updateTopics((temas) => temas.map((tema) =>
       tema.id === topicId ? { ...tema, tarjetas: [...(tema.tarjetas || []), nueva] } : tema,
     ));
@@ -81,10 +88,17 @@ export default function NotesGrid({ materia, onUpdate }) {
         </button>
       </div>
 
+      <div className="mb-4 flex flex-wrap items-center gap-2 text-sm" role="group" aria-label="Vista de apuntes">
+        <div className="vani-view-switch">
+          {[["grid", "Cuadrícula", LayoutGrid], ["list", "Lista", List]].map(([value, label, Icon]) => <button key={value} type="button" aria-pressed={view === value} onClick={() => { setView(value); localStorage.setItem("vani_notes_view", value); }} className="vani-view-option"><Icon size={16} aria-hidden="true" />{label}</button>)}
+        </div>
+        <span className="text-xs text-slate-500 dark:text-slate-400">{view === "grid" ? "Explora tus apuntes en tarjetas" : "Más espacio para leer y escribir"}</span>
+      </div>
       <div className="space-y-5">
-        {(materia.temas || []).map((tema) => (
-          <section key={tema.id} className="rounded-2xl border border-slate-200/80 bg-white/55 p-3 shadow-sm backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/55 sm:p-4">
+        {(materia.temas || []).map((tema, topicIndex) => (
+          <section key={tema.id} className="topic-section rounded-2xl border p-3 sm:p-4" style={{ "--topic-color": tema.color || TOPIC_COLORS[topicIndex % TOPIC_COLORS.length] }}>
             <div className="mb-3 flex flex-wrap items-center gap-2">
+              <label className="relative flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl text-white" style={{ backgroundColor: tema.color || TOPIC_COLORS[topicIndex % TOPIC_COLORS.length] }} title="Cambiar color del tema"><FolderPlus size={18} aria-hidden="true" /><input type="color" aria-label={`Color del tema ${tema.nombre}`} value={tema.color || TOPIC_COLORS[topicIndex % TOPIC_COLORS.length]} onChange={(event) => updateTopic(tema.id, "color", event.target.value)} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" /></label>
               <input
                 value={tema.nombre}
                 onChange={(e) => updateTopic(tema.id, "nombre", e.target.value)}
@@ -106,19 +120,29 @@ export default function NotesGrid({ materia, onUpdate }) {
             {(tema.tarjetas || []).length === 0 ? (
               <p className="rounded-xl border border-dashed border-slate-300 p-5 text-center text-sm text-slate-400 dark:border-slate-700">Este tema todavía no tiene apuntes.</p>
             ) : (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
+              <div className={view === "list" ? "grid grid-cols-1 items-start gap-4" : "grid grid-cols-1 items-start gap-4 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3"}>
                 {(tema.tarjetas || []).map((tarjeta) => {
+                  const cardKey = `${materia.id}-${tema.id}-${tarjeta.id}`;
+                  const isActive = activeCard === cardKey;
+                  const previewDoc = new DOMParser().parseFromString(tarjeta.contenido || "", "text/html");
+                  previewDoc.querySelectorAll("p, h1, h2, h3, li, blockquote, br").forEach((block) => block.append("\n"));
+                  const preview = (previewDoc.body.textContent || "").trim();
+                  const isCollapsed = collapsed[cardKey] ?? preview.length > 650;
                   const cardColor = tarjeta.color || materia.color || "#3B82F6";
                   return (
                     <article
                       key={tarjeta.id}
-                      className="min-w-0 rounded-xl border p-4 shadow-sm transition-colors"
+                      className={`note-card min-w-0 rounded-xl p-4 ${isActive ? "note-card-active" : ""} ${wide[cardKey] ? "col-span-full" : ""}`}
                       style={{
-                        borderColor: cardColor,
-                        backgroundColor: `color-mix(in srgb, ${cardColor} 12%, transparent)`,
+                        "--note-color": cardColor,
+
                       }}
                     >
-                      <div className="mb-3 flex items-center gap-2">
+                      <div className="mb-3 flex items-center justify-between gap-2 text-xs">
+                        <span className="flex items-center gap-2 text-slate-500 dark:text-slate-300"><span aria-hidden="true" className="note-color-dot" />{isActive ? "Editando" : "Lectura"}</span>
+                        <button type="button" className="vani-pill" onClick={() => { setActiveCard(isActive ? null : cardKey); if (!isActive) setCollapsed((current) => ({ ...current, [cardKey]: false })); }}>{isActive ? "Terminar" : "Editar apunte"}</button>
+                      </div>
+                      {isActive ? <div className="mb-3 flex items-center gap-2">
                         <label
                           className="relative h-6 w-6 shrink-0 cursor-pointer rounded-full border-2 border-white shadow-sm ring-1 ring-slate-300 transition hover:scale-110 dark:border-slate-900 dark:ring-slate-600"
                           style={{ backgroundColor: cardColor }}
@@ -145,11 +169,16 @@ export default function NotesGrid({ materia, onUpdate }) {
                         >
                           <Trash2 size={14} />
                         </button>
+                      </div> : <h3 className="mb-3 break-words font-semibold text-slate-700 dark:text-slate-200">{tarjeta.titulo || "Sin título"}</h3>}
+                      <div className="mb-3 flex flex-wrap gap-2 text-xs">
+                        <button type="button" aria-expanded={!isCollapsed} onClick={() => setCollapsed({ ...collapsed, [cardKey]: !isCollapsed })} className="vani-pill">{isCollapsed ? <ChevronDown size={15} aria-hidden="true" /> : <ChevronUp size={15} aria-hidden="true" />}{isCollapsed ? "Expandir apunte" : "Contraer apunte"}</button>
+                        {view === "grid" && <button type="button" aria-pressed={Boolean(wide[cardKey])} onClick={() => { setWide({ ...wide, [cardKey]: !wide[cardKey] }); setCollapsed({ ...collapsed, [cardKey]: false }); }} className="vani-pill">{wide[cardKey] ? <Minimize2 size={15} aria-hidden="true" /> : <Maximize2 size={15} aria-hidden="true" />}{wide[cardKey] ? "Ancho normal" : "Todo el ancho"}</button>}
                       </div>
-                      <TipTapEditor
+                      {isCollapsed ? <p className="line-clamp-3 whitespace-pre-wrap text-sm leading-7 text-slate-600 dark:text-slate-300">{preview || "Apunte vacío. Expándelo para comenzar a escribir."}</p> : <TipTapEditor
+                        editable={isActive}
                         content={tarjeta.contenido}
-                        onUpdate={(html) => updateCard(tema.id, tarjeta.id, "contenido", html)}
-                      />
+                        onUpdate={(html) => { setCollapsed((current) => ({ ...current, [cardKey]: false })); updateCard(tema.id, tarjeta.id, "contenido", html); }}
+                      />}
                     </article>
                   );
                 })}

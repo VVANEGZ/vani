@@ -1,5 +1,6 @@
+import { exportNotesHtml } from "./storage/notesHtml";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Command, Download, Moon, Sun, Upload } from "lucide-react";
+import { Command, Download, Moon, Sun, Upload, Pin, PinOff, PanelTopClose, PanelTopOpen } from "lucide-react";
 import TabBar from "./components/TabBar";
 import Sidebar from "./components/Sidebar";
 import NotesGrid from "./components/NotesGrid";
@@ -49,6 +50,8 @@ function Workspace({ userId }) {
   const [materiaAEliminar, setMateriaAEliminar] = useState(null);
   const [mensaje, setMensaje] = useState("");
   const [theme, setTheme] = useState(() => localStorage.getItem("vani_theme") || "light");
+  const [headerPinned, setHeaderPinned] = useState(() => localStorage.getItem("vani_header_pinned") !== "false");
+  const [headerCompact, setHeaderCompact] = useState(() => localStorage.getItem("vani_header_compact") === "true");
   const [commandOpen, setCommandOpen] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -266,7 +269,17 @@ function Workspace({ userId }) {
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
-      <header className="sticky top-0 z-30 shadow-sm">
+      <header className={`${headerPinned ? "sticky top-0" : "relative"} z-30 shadow-sm`}>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-1.5 text-xs dark:border-slate-800 dark:bg-slate-950">
+          <span className="font-semibold">Vani · Tu espacio de estudio</span>
+          <div className="flex items-center gap-3">
+            <button type="button" aria-label="Fijar encabezado" aria-pressed={headerPinned} title={headerPinned ? "Desfijar encabezado" : "Fijar encabezado"} onClick={() => { setHeaderPinned(!headerPinned); localStorage.setItem("vani_header_pinned", String(!headerPinned)); }} className="vani-pill vani-pin">
+              {headerPinned ? <Pin size={15} aria-hidden="true" /> : <PinOff size={15} aria-hidden="true" />}<span>{headerPinned ? "Fijado" : "Fijar"}</span>
+            </button>
+            <button type="button" aria-expanded={!headerCompact} onClick={() => { setHeaderCompact(!headerCompact); localStorage.setItem("vani_header_compact", String(!headerCompact)); }} className="vani-pill">{headerCompact ? <PanelTopOpen size={15} aria-hidden="true" /> : <PanelTopClose size={15} aria-hidden="true" />}{headerCompact ? "Mostrar herramientas" : "Ocultar herramientas"}</button>
+          </div>
+        </div>
+        <div hidden={headerCompact}>
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-950 sm:px-4">
           <div className="min-w-0">
             <p className="break-words text-sm font-bold tracking-wide text-slate-900 dark:text-slate-100">Vani</p>
@@ -311,11 +324,13 @@ function Workspace({ userId }) {
             >
               <Upload size={14} /> Importar .md
             </button>
+            <button type="button" onClick={() => { if (materiaActiva) { exportNotesHtml(materiaActiva); setMensaje("Apuntes exportados en HTML."); } }} className="vani-pill" title="Exportar apuntes con formato y colores"><Download size={14} /> Exportar .html</button>
             <input ref={fileInputRef} type="file" accept="text/markdown,.md" className="hidden" onChange={handleImport} />
             <AuthPanel />
           </div>
         </div>
 
+        </div>
         <TabBar
           materias={materias}
           activaId={materiaActiva?.id || ""}

@@ -1,17 +1,17 @@
-import { useEffect, useState } from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEffect } from "react";
+import { useEditor, EditorContent, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Bold, Italic, List, Heading1, Heading2, Heading3, Link2, Unlink } from "lucide-react";
 
-export default function TipTapEditor({ content, onUpdate }) {
-  const [isEmpty, setIsEmpty] = useState(!content);
+export default function TipTapEditor({ content, onUpdate, editable = true }) {
+
 
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
         link: {
-          openOnClick: false,
+          openOnClick: true,
           autolink: true,
           linkOnPaste: true,
           HTMLAttributes: {
@@ -21,15 +21,14 @@ export default function TipTapEditor({ content, onUpdate }) {
         },
       }),
     ],
+    editable,
     content: content || "",
     editorProps: {
       attributes: {
         class: "vani-editor focus:outline-none min-h-[140px] p-3",
       },
     },
-    onCreate: ({ editor: currentEditor }) => setIsEmpty(currentEditor.isEmpty),
     onUpdate: ({ editor: currentEditor }) => {
-      setIsEmpty(currentEditor.isEmpty);
       onUpdate(currentEditor.getHTML());
     },
   });
@@ -37,9 +36,13 @@ export default function TipTapEditor({ content, onUpdate }) {
   useEffect(() => {
     if (editor && editor.getHTML() !== (content || '')) {
       editor.commands.setContent(content || '', { emitUpdate: false });
-      setIsEmpty(editor.isEmpty);
     }
   }, [editor, content]);
+
+  // Changing presentation must not save or resynchronize an existing note.
+  useEffect(() => { editor?.setEditable(editable, false); }, [editor, editable]);
+
+  const isEmpty = useEditorState({ editor, selector: ({ editor: current }) => current?.isEmpty ?? true });
 
   if (!editor) return null;
 
@@ -60,7 +63,7 @@ export default function TipTapEditor({ content, onUpdate }) {
 
   return (
     <div className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
-      <div className="flex flex-wrap gap-1 border-b border-slate-200 bg-slate-50 p-1.5 dark:border-slate-700 dark:bg-slate-900" aria-label="Formato de notas">
+      {editable && <div className="flex flex-wrap gap-1 border-b border-slate-200 bg-slate-50 p-1.5 dark:border-slate-700 dark:bg-slate-900" aria-label="Formato de notas">
         <button type="button" title="Negrita" aria-label="Negrita" onClick={() => editor.chain().focus().toggleBold().run()} className={buttonClass(editor.isActive("bold"))}><Bold size={15} /></button>
         <button type="button" title="Cursiva" aria-label="Cursiva" onClick={() => editor.chain().focus().toggleItalic().run()} className={buttonClass(editor.isActive("italic"))}><Italic size={15} /></button>
         <button type="button" title="Título 1" aria-label="Título 1" onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} className={buttonClass(editor.isActive("heading", { level: 1 }))}><Heading1 size={15} /></button>
@@ -69,10 +72,10 @@ export default function TipTapEditor({ content, onUpdate }) {
         <button type="button" title="Lista" aria-label="Lista" onClick={() => editor.chain().focus().toggleBulletList().run()} className={buttonClass(editor.isActive("bulletList"))}><List size={15} /></button>
         <button type="button" title="Añadir o editar enlace" aria-label="Añadir o editar enlace" onClick={setLink} className={buttonClass(editor.isActive("link"))}><Link2 size={15} /></button>
         <button type="button" title="Quitar enlace" aria-label="Quitar enlace" disabled={!editor.isActive("link")} onClick={() => editor.chain().focus().unsetLink().run()} className={`${buttonClass(false)} disabled:cursor-not-allowed disabled:opacity-35`}><Unlink size={15} /></button>
-      </div>
+      </div>}
 
       <div className="relative">
-        {isEmpty && (
+        {isEmpty && editable && (
           <span className="pointer-events-none absolute left-3 top-3 z-10 max-w-[calc(100%-1.5rem)] break-words text-sm text-slate-400">
             Escribe aquí tus notas… Prueba #, ##, ### o - al inicio, como en Obsidian.
           </span>

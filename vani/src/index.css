@@ -1,6 +1,58 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
+.topic-section { border-color: color-mix(in srgb, var(--topic-color) 40%, #e2e8f0); border-top: 3px solid var(--topic-color); background: color-mix(in srgb, var(--topic-color) 8%, white); }
+.dark .topic-section { border-color: color-mix(in srgb, var(--topic-color) 50%, #475569); border-top-color: var(--topic-color); background: #101923; box-shadow: 0 8px 24px rgb(0 0 0 / 16%); }
+.topic-section > div:first-child { padding-bottom: 12px; border-bottom: 1px solid color-mix(in srgb, var(--topic-color) 25%, transparent); }
+.note-card { border: 1px solid color-mix(in srgb, var(--note-color) 35%, #cbd5e1); border-left: 4px solid var(--note-color); background: color-mix(in srgb, var(--note-color) 6%, white); box-shadow: 0 2px 6px rgb(15 23 42 / 5%); transition: background-color 160ms, box-shadow 160ms, border-color 160ms; }
+.note-card-active { background: color-mix(in srgb, var(--note-color) 12%, white); box-shadow: 0 0 0 2px color-mix(in srgb, var(--note-color) 45%, transparent), 0 6px 16px rgb(15 23 42 / 8%); }
+.note-color-dot { width: 9px; height: 9px; flex-shrink: 0; border-radius: 50%; background: var(--note-color); box-shadow: 0 0 0 1px rgb(148 163 184 / 40%); }
+.dark .note-card { background: color-mix(in srgb, var(--note-color) 8%, #243142); border-color: color-mix(in srgb, var(--note-color) 35%, #64748b); border-left-color: var(--note-color); box-shadow: 0 3px 8px rgb(0 0 0 / 20%); }
+.dark .note-card-active { background: color-mix(in srgb, var(--note-color) 16%, #29384a); box-shadow: 0 0 0 2px color-mix(in srgb, var(--note-color) 55%, #94a3b8), 0 6px 16px rgb(0 0 0 / 20%); }
+@media (prefers-reduced-motion: reduce) { .note-card { transition: none; } }
+.auth-dialog { margin: auto; padding: 0; border: 0; border-radius: 24px; width: min(448px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior: contain; background: transparent; }
+.auth-dialog::backdrop { background: rgb(2 6 23 / 55%); backdrop-filter: blur(4px); }
+
+.subject-tab { transition: background-color 180ms ease, color 180ms ease, box-shadow 180ms ease, border-color 180ms ease; }
+.subject-tab > button:first-child:active { transform: scale(0.97); }
+.subject-tab > button:first-child { transition: transform 120ms ease; }
+.calendar-category summary::-webkit-details-marker { display: none; }
+.calendar-category summary:focus-visible { outline: 2px solid #64748b; outline-offset: 2px; border-radius: 12px; }
+@media (prefers-reduced-motion: reduce) { .subject-tab, .subject-tab > button:first-child { transition: none; transform: none; } }
+
+.vani-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 34px;
+  padding: 0.4rem 0.85rem;
+  border: 1px solid rgb(148 163 184 / 25%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 85%);
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 5%), inset 0 1px 0 rgb(255 255 255 / 70%);
+  transition: background 150ms, box-shadow 150ms, color 150ms;
+}
+.vani-pill:hover { background: #fff; color: #2563eb; box-shadow: 0 3px 8px rgb(15 23 42 / 10%); }
+.vani-pill[aria-pressed="true"] { background: #eaf2ff; color: #2563eb; border-color: #bfdbfe; }
+.vani-pill svg, .vani-view-option svg { flex-shrink: 0; }
+.vani-view-switch { display: inline-flex; gap: 3px; padding: 4px; border-radius: 999px; background: #e2e8f0; border: 1px solid rgb(148 163 184 / 15%); }
+.vani-view-option { display: inline-flex; align-items: center; gap: 0.45rem; border-radius: 999px; padding: 0.5rem 1rem; font-size: 13px; font-weight: 600; color: #64748b; transition: background 150ms, color 150ms; }
+.vani-view-option:hover { color: #1e293b; }
+.vani-view-option[aria-pressed="true"] { background: #fff; color: #2563eb; box-shadow: 0 2px 5px rgb(15 23 42 / 10%); }
+.vani-pill:focus-visible, .vani-view-option:focus-visible { outline: 2px solid #3b82f6; outline-offset: 3px; }
+.dark .vani-pill { background: #1e293b; color: #cbd5e1; border-color: #475569; box-shadow: 0 1px 3px rgb(0 0 0 / 15%); }
+.dark .vani-pill:hover { background: #334155; color: #bfdbfe; }
+.dark .vani-pill[aria-pressed="true"] { background: #172e50; color: #93c5fd; border-color: #315789; }
+.dark .vani-view-switch { background: #0f172a; border-color: #334155; }
+.dark .vani-view-option { color: #94a3b8; }
+.dark .vani-view-option:hover { color: #e2e8f0; }
+.dark .vani-view-option[aria-pressed="true"] { background: #334155; color: #bfdbfe; }
+@media (prefers-reduced-motion: reduce) { .vani-pill, .vani-view-option { transition: none; } }
+
 html {
   background: #f8fafc;
 }

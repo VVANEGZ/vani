@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { createPortal } from "react-dom";
+import { useEffect, useRef, useState } from "react";
 import { LogIn, LogOut, UserPlus, X } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./AuthProvider";
@@ -13,6 +14,8 @@ function friendlyError(message) {
 
 export default function AuthPanel() {
   const { user, loading } = useAuth();
+  const dialogRef = useRef(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
@@ -20,6 +23,25 @@ export default function AuthPanel() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!open || user) return;
+    const dialog = dialogRef.current;
+    const previousFocus = document.activeElement;
+    const scrollY = window.scrollY;
+    const previous = { position: document.body.style.position, top: document.body.style.top, width: document.body.style.width, overflow: document.body.style.overflow };
+    const htmlOverflow = document.documentElement.style.overflow;
+    Object.assign(document.body.style, { position: "fixed", top: `-${scrollY}px`, width: "100%", overflow: "hidden" });
+    document.documentElement.style.overflow = "hidden";
+    dialog?.showModal();
+    return () => {
+      dialog?.close();
+      Object.assign(document.body.style, previous);
+      document.documentElement.style.overflow = htmlOverflow;
+      window.scrollTo(0, scrollY);
+      previousFocus?.focus?.({ preventScroll: true });
+    };
+  }, [open, user]);
 
   const resetFeedback = () => {
     setMessage("");
@@ -41,7 +63,7 @@ export default function AuthPanel() {
       return;
     }
 
-    if (password.length < 8) {
+    if (mode === "register" && password.length < 8) {
       setError("Usa una contraseña de al menos 8 caracteres.");
       return;
     }
@@ -115,23 +137,21 @@ export default function AuthPanel() {
             </button>
           </div>
         ) : (
-          <button
+          <><button
             type="button"
             onClick={() => openPanel("login")}
             className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white shadow-lg hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
           >
-            <LogIn size={14} /> Entrar
-          </button>
+            <LogIn size={14} /> Iniciar sesión
+          </button><button type="button" className="vani-pill" onClick={() => openPanel("register")}><UserPlus size={14} /> Crear cuenta</button></>
         )}
       </div>
 
-      {open && !user && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm" onMouseDown={() => setOpen(false)}>
+      {open && !user && createPortal(
+        <dialog ref={dialogRef} className="auth-dialog" onCancel={(event) => { event.preventDefault(); if (!busy) setOpen(false); }} aria-label={mode === "login" ? "Iniciar sesión" : "Crear cuenta"}>
           <div
             className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
             onMouseDown={(event) => event.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
             aria-label={mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
           >
             <div className="mb-5 flex items-start justify-between gap-4">
@@ -141,10 +161,10 @@ export default function AuthPanel() {
                   {mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  Inicia sesión para sincronizar tus materias y apuntes entre dispositivos. Podrás importar los apuntes locales a tu cuenta.
+                  {mode === "register" ? "Crea tu cuenta con tu correo y una contraseña. Después, revisa tu correo para confirmar el acceso si te lo solicitamos." : "Retoma tus materias y apuntes en cualquier dispositivo. Si aún no tienes cuenta, elige Crear cuenta."}
                 </p>
               </div>
-              <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Cerrar">
+              <button type="button" disabled={busy} onClick={() => setOpen(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Cerrar">
                 <X size={18} />
               </button>
             </div>
@@ -152,6 +172,7 @@ export default function AuthPanel() {
             <div className="mb-5 grid grid-cols-2 rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
               <button
                 type="button"
+                disabled={busy}
                 onClick={() => { setMode("login"); resetFeedback(); }}
                 className={`rounded-lg px-3 py-2 text-sm font-semibold ${mode === "login" ? "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white" : "text-slate-500 dark:text-slate-400"}`}
               >
@@ -162,7 +183,7 @@ export default function AuthPanel() {
                 onClick={() => { setMode("register"); resetFeedback(); }}
                 className={`rounded-lg px-3 py-2 text-sm font-semibold ${mode === "register" ? "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white" : "text-slate-500 dark:text-slate-400"}`}
               >
-                Registrarme
+                Crear cuenta
               </button>
             </div>
 
@@ -170,6 +191,8 @@ export default function AuthPanel() {
               <label className="block">
                 <span className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">Correo</span>
                 <input
+                  required
+                  autoFocus
                   type="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
@@ -182,17 +205,21 @@ export default function AuthPanel() {
               <label className="block">
                 <span className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">Contraseña</span>
                 <input
-                  type="password"
+                  required
+                  minLength={mode === "register" ? 8 : undefined}
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   autoComplete={mode === "login" ? "current-password" : "new-password"}
-                  placeholder="Mínimo 8 caracteres"
+                  placeholder={mode === "register" ? "Mínimo 8 caracteres" : "Tu contraseña"}
                   className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-0 transition focus:border-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                 />
               </label>
 
-              {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</p>}
-              {message && <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">{message}</p>}
+              <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300"><input type="checkbox" checked={showPassword} onChange={(event) => setShowPassword(event.target.checked)} /> Mostrar contraseña</label>
+              {mode === "register" && <p className="text-xs text-slate-500">Usa al menos 8 caracteres. Tus apuntes locales seguirán disponibles; podrás importarlos a tu cuenta al entrar.</p>}
+              {error && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</p>}
+              {message && <p role="status" className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">{message}</p>}
 
               <button
                 type="submit"
@@ -204,7 +231,7 @@ export default function AuthPanel() {
               </button>
             </form>
           </div>
-        </div>
+        </dialog>, document.body
       )}
     </>
   );

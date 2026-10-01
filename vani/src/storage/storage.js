@@ -76,6 +76,7 @@ function normalizeTopics(materia) {
     return materia.temas.map((tema, index) => ({
       id: tema.id || `topic-${Date.now()}-${index}`,
       nombre: tema.nombre || `Tema ${index + 1}`,
+      color: /^#[0-9A-F]{6}$/i.test(tema.color || "") ? tema.color : undefined,
       tarjetas: normalizeCards(tema.tarjetas, fallbackColor),
     }));
   }
