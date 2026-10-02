@@ -1,20 +1,20 @@
 import { useState } from "react";
 import ConfirmModal from "./ConfirmModal";
 import CriterionCard from "./CriterionCard";
+import AssignmentCard from "./AssignmentCard";
+import { criterionFor, gradeSummary } from "../storage/assessment.js";
 import { criteriaTotal } from "../storage/criteria.js";
-import { BookOpen, Calendar, Plus, X } from "lucide-react";
+import { BookOpen, Calendar, Plus } from "lucide-react";
 
-const GROUPS = [
-  { tipo: "examen", titulo: "Exámenes", tone: "red" },
-  { tipo: "proyecto", titulo: "Proyectos", tone: "purple" },
-  { tipo: "tarea", titulo: "Tareas", tone: "blue" },
-];
-
-const toneClasses = { red: "bg-rose-400", purple: "bg-violet-400", blue: "bg-sky-400" };
-
-export default function Sidebar({ materia, onUpdate, onSaved }) {
+export default function Sidebar({ materia, onUpdate, onSaved, section }) {
+  const [newEventId, setNewEventId] = useState(null);
   const [eventToDelete, setEventToDelete] = useState(null);
   const criterios = materia.criterios || [];
+  const fechas = materia.fechas || [];
+  const groups = criterios.map((c) => ({ ...c, events: fechas.filter((e) => criterionFor(e, criterios) === c.id) }));
+  const unlinked = fechas.filter((e) => !criterionFor(e, criterios));
+  const summary = gradeSummary(groups.flatMap((g) => g.events));
+  const overweight = groups.some((g) => gradeSummary(g.events).assigned > Number(g.porcentaje));
   const total = criteriaTotal(criterios);
   const restante = Math.max(0, 100 - total);
 
@@ -25,28 +25,15 @@ export default function Sidebar({ materia, onUpdate, onSaved }) {
     updateCriteria([...criterios, { id: `criterion-${Date.now()}`, nombre: "Nuevo criterio", porcentaje: 0 }]);
   };
 
-  const addEvent = (tipo) => {
-    onUpdate("fechas", [...(materia.fechas || []), { id: `event-${Date.now()}`, tipo, fecha: "", titulo: "" }]);
-  };
-
-  const updateEvent = (id, field, value) => {
-    onUpdate("fechas", (materia.fechas || []).map((evento) => evento.id === id ? { ...evento, [field]: value } : evento));
-  };
-
+  const addEvent = (criterioId) => { const id = crypto.randomUUID(); setNewEventId(id); onUpdate("fechas", [...fechas, { id, criterioId, fecha: "", titulo: "", peso: "", realizado: false, formato: "reactivos", resultado: "", reactivos: "" }]); };
   const removeEvent = (id) => setEventToDelete({ id, materiaId: materia.id });
 
-  const commitWithEnter = (event) => {
-    if (event.key !== "Enter") return;
-    event.preventDefault();
-    event.currentTarget.blur();
-    onSaved?.();
-  };
-
   return (
-    <aside className="w-full border-b border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950 lg:w-80 lg:shrink-0 lg:border-b-0 lg:border-r lg:p-5 lg:overflow-y-auto">
+    <aside className="section-workspace w-full p-5 sm:p-8">
+      <div className="mx-auto mb-6 max-w-3xl"><p className="mb-1 text-xs text-slate-500 dark:text-slate-400">{materia.nombre}</p><h1 className="text-2xl font-semibold tracking-tight">{section === "rubric" ? "Encuadre" : "Calendario"}</h1></div>
       <ConfirmModal open={eventToDelete?.materiaId === materia.id} title="¿Eliminar esta fecha?" description="Se eliminará esta asignación del calendario. Esta acción no se puede deshacer." onCancel={() => setEventToDelete(null)} onConfirm={() => { onUpdate("fechas", (materia.fechas || []).filter((event) => event.id !== eventToDelete.id)); setEventToDelete(null); onSaved?.(); }} />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-        <section className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+      <div className="mx-auto max-w-3xl space-y-6">
+        {section !== "calendar" && <section className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
               <BookOpen size={14} /> Encuadre
@@ -58,6 +45,7 @@ export default function Sidebar({ materia, onUpdate, onSaved }) {
 
           <div className="space-y-2">
             {criterios.map((criterio) => (
+              <div key={`${materia.id}-${criterio.id}`}>
               <CriterionCard
                 key={`${materia.id}-${criterio.id}`}
                 criterio={criterio}
@@ -67,10 +55,13 @@ export default function Sidebar({ materia, onUpdate, onSaved }) {
                   onSaved?.();
                 }}
                 onDelete={() => {
+                  onUpdate("fechas", fechas.map((event) => ({ ...event, criterioId: criterionFor(event, criterios) || event.criterioId || "unlinked" })));
                   updateCriteria(criterios.filter((item) => item.id !== criterio.id));
                   onSaved?.();
                 }}
               />
+              <p className="px-2 pt-1 text-[11px] text-slate-500 dark:text-slate-400">Aporte: {gradeSummary(groups.find((g) => g.id === criterio.id).events).earned.toFixed(2)} / {criterio.porcentaje} puntos</p>
+              </div>
             ))}
           </div>
 
@@ -84,57 +75,38 @@ export default function Sidebar({ materia, onUpdate, onSaved }) {
           <p className="mt-2 break-words text-xs text-slate-500 dark:text-slate-400">
             {total === 100 ? "✓ Encuadre completo" : `Falta asignar ${restante}%`}
           </p>
-        </section>
+        </section>}
 
         <section>
-          <div className="mb-3">
+          <div className="grade-overview mb-4" aria-live="polite">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Avance</p>
+            {overweight || total > 100 ? <p className="mt-2 text-rose-600 dark:text-rose-300">Revisa los pesos: superan el encuadre. El cálculo está pausado.</p> : <>
+              <div className="mt-2 flex items-baseline gap-2"><strong className="text-3xl font-semibold tracking-tight">{summary.earned.toFixed(1)}</strong><span className="text-xs text-slate-500 dark:text-slate-400">puntos de 100</span></div>
+              <div className="grade-track" role="progressbar" aria-label="Porcentaje del curso evaluado" aria-valuenow={summary.graded} aria-valuemin={0} aria-valuemax={100}><span style={{ width: Math.min(100, summary.graded) + "%" }} /></div>
+              <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400"><span>{summary.graded.toFixed(0)}% evaluado</span><span>{Math.max(0,100-summary.graded).toFixed(0)}% pendiente</span></div>
+              <details className="mt-3 text-xs text-slate-500 dark:text-slate-400"><summary className="cursor-pointer">Ver detalle</summary><p className="mt-2 leading-relaxed">Según los resultados pendientes, la calificación final puede quedar entre {(summary.earned / 10).toFixed(2)} y {((summary.earned + 100 - summary.graded) / 10).toFixed(2)} / 10. Lo pendiente aún no cuenta como cero.</p></details>
+            </>}
+          </div>
+          {section !== "rubric" && <><div className="mb-3">
             <h2 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
               <Calendar size={14} /> Calendario
             </h2>
-            <p className="mt-1 break-words text-[11px] text-slate-400">Los cambios se guardan automáticamente. Enter confirma y cierra el campo.</p>
+            <p className="mt-1 break-words text-[11px] text-slate-400">Edita con el lápiz · Enter guarda y cierra</p>
           </div>
           <div className="space-y-3">
-            {GROUPS.map(({ tipo, titulo, tone }) => (
-              <details key={tipo} className="calendar-category group rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950" open={tipo === "examen"}>
-                <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-3 text-sm font-medium text-slate-700 dark:text-slate-200"><span className={`h-1.5 w-1.5 rounded-full ${toneClasses[tone]}`} />{titulo}<span className="ml-auto text-xs text-slate-400">{(materia.fechas || []).filter((event) => event.tipo === tipo).length}</span><span className="text-slate-400 transition-transform group-open:rotate-90" aria-hidden="true">›</span></summary>
-                <div className="px-3 pb-3">
-                <div className="mb-2 flex justify-end">
-                  <button onClick={() => addEvent(tipo)} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={`Añadir ${titulo.toLowerCase()}`}>
-                    <Plus size={14} /><span className="text-xs">Añadir</span>
-                  </button>
+            {!criterios.length && <p className="text-xs text-slate-500">Agrega criterios al encuadre para crear asignaciones.</p>}
+            {[...groups, ...(unlinked.length ? [{ id: "unlinked", nombre: "Sin criterio", events: unlinked }] : [])].map((group) => {
+              const criterion = criterios.find((c) => c.id === group.id);
+              const progress = gradeSummary(group.events);
+              return <details key={materia.id + group.id} className="calendar-category group rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950" open>
+                <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-3 text-sm font-medium text-slate-700 dark:text-slate-200"><span className="h-1.5 w-1.5 rounded-full bg-sky-400" />{group.nombre}<span className="ml-auto text-xs text-slate-400">{group.events.length}</span><span aria-hidden="true">›</span></summary>
+                <div className="space-y-3 px-3 pb-3">
+                  {criterion ? <><p className="text-xs text-slate-500 dark:text-slate-400">{progress.assigned}% de {criterion.porcentaje}% distribuido</p><button onClick={() => addEvent(criterion.id)} className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1.5 text-xs dark:border-slate-700"><Plus size={14} />Añadir asignación</button></> : <p className="text-xs text-slate-500">Estas asignaciones se conservan, pero no cuentan en la calificación hasta vincularlas.</p>}
+                  {group.events.map((event) => <AssignmentCard autoEdit={event.id === newEventId} key={materia.id + event.id} event={event} events={group.events} criterion={criterion} criteria={criterios} onDelete={() => removeEvent(event.id)} onChange={(updated) => { onUpdate("fechas", fechas.map((e) => e.id === updated.id ? { ...updated, criterioId: criterion?.id || updated.criterioId } : e)); onSaved?.(); }} />)}
                 </div>
-                <div className="space-y-2">
-                  {(materia.fechas || []).filter((f) => f.tipo === tipo).map((evento) => (
-                    <div key={evento.id} className="rounded-lg border border-white/80 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                      <div className="flex gap-2">
-                        <input
-                          type="date"
-                          value={evento.fecha || ""}
-                          onChange={(e) => updateEvent(evento.id, "fecha", e.target.value)}
-                          onKeyDown={commitWithEnter}
-                          onBlur={() => onSaved?.()}
-                          className="min-w-0 flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-                        />
-                        <button onClick={() => removeEvent(evento.id)} className="text-slate-400 hover:text-red-600" aria-label="Eliminar evento">
-                          <X size={14} />
-                        </button>
-                      </div>
-                      <input
-                        type="text"
-                        value={evento.titulo || ""}
-                        onChange={(e) => updateEvent(evento.id, "titulo", e.target.value)}
-                        onKeyDown={commitWithEnter}
-                        onBlur={() => onSaved?.()}
-                        placeholder="Descripción..."
-                        className="mt-2 w-full break-words rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-blue-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-                      />
-                    </div>
-                  ))}
-                </div>
-                </div>
-              </details>
-            ))}
-          </div>
+              </details>;
+            })}
+          </div></>}
         </section>
       </div>
     </aside>

@@ -77,7 +77,7 @@ export default function TipTapEditor({ content, onUpdate, editable = true }) {
       <div className="relative">
         {isEmpty && editable && (
           <span className="pointer-events-none absolute left-3 top-3 z-10 max-w-[calc(100%-1.5rem)] break-words text-sm text-slate-400">
-            Escribe aquí tus notas… Prueba #, ##, ### o - al inicio, como en Obsidian.
+            Escribe aquí… Prueba #, ##, ### o - al inicio, como en Obsidian.
           </span>
         )}
         <EditorContent editor={editor} />

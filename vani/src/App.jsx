@@ -1,7 +1,7 @@
 import { exportNotesHtml } from "./storage/notesHtml";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Command, Download, Moon, Sun, Upload, Pin, PinOff, PanelTopClose, PanelTopOpen } from "lucide-react";
-import TabBar from "./components/TabBar";
+import { Command, Download, Moon, Sun, Upload, Pin, PinOff, SlidersHorizontal } from "lucide-react";
+import { Menu, NotebookPen, CalendarDays, BookOpen, Plus, Trash2 } from "lucide-react";
 import Sidebar from "./components/Sidebar";
 import NotesGrid from "./components/NotesGrid";
 import DeleteSubjectModal from "./components/DeleteSubjectModal";
@@ -51,7 +51,9 @@ function Workspace({ userId }) {
   const [mensaje, setMensaje] = useState("");
   const [theme, setTheme] = useState(() => localStorage.getItem("vani_theme") || "light");
   const [headerPinned, setHeaderPinned] = useState(() => localStorage.getItem("vani_header_pinned") !== "false");
-  const [headerCompact, setHeaderCompact] = useState(() => localStorage.getItem("vani_header_compact") === "true");
+  const [navigationOpen, setNavigationOpen] = useState(true);
+  const [section, setSection] = useState("notes");
+  const [headerCompact, setHeaderCompact] = useState(true);
   const [commandOpen, setCommandOpen] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -269,87 +271,46 @@ function Workspace({ userId }) {
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
-      <header className={`${headerPinned ? "sticky top-0" : "relative"} z-30 shadow-sm`}>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-1.5 text-xs dark:border-slate-800 dark:bg-slate-950">
-          <span className="font-semibold">Vani · Tu espacio de estudio</span>
-          <div className="flex items-center gap-3">
-            <button type="button" aria-label="Fijar encabezado" aria-pressed={headerPinned} title={headerPinned ? "Desfijar encabezado" : "Fijar encabezado"} onClick={() => { setHeaderPinned(!headerPinned); localStorage.setItem("vani_header_pinned", String(!headerPinned)); }} className="vani-pill vani-pin">
-              {headerPinned ? <Pin size={15} aria-hidden="true" /> : <PinOff size={15} aria-hidden="true" />}<span>{headerPinned ? "Fijado" : "Fijar"}</span>
-            </button>
-            <button type="button" aria-expanded={!headerCompact} onClick={() => { setHeaderCompact(!headerCompact); localStorage.setItem("vani_header_compact", String(!headerCompact)); }} className="vani-pill">{headerCompact ? <PanelTopOpen size={15} aria-hidden="true" /> : <PanelTopClose size={15} aria-hidden="true" />}{headerCompact ? "Mostrar herramientas" : "Ocultar herramientas"}</button>
-          </div>
-        </div>
-        <div hidden={headerCompact}>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-950 sm:px-4">
-          <div className="min-w-0">
-            <p className="break-words text-sm font-bold tracking-wide text-slate-900 dark:text-slate-100">Vani</p>
-            <p className="break-words text-xs text-slate-500 dark:text-slate-400">Tus materias y apuntes, en un solo lugar</p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setCommandOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-              title="Abrir paleta de comandos (Ctrl/⌘ + K)"
-            >
-              <Command size={14} /> Comandos <span className="text-[10px] text-slate-400">Ctrl K</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-              title="Cambiar tema"
-            >
-              {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
-              {theme === "dark" ? "Claro" : "Oscuro"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (!materiaActiva) return;
-        exportNotesMarkdown(materiaActiva);
-                setMensaje("Apuntes exportados en Markdown.");
-              }}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-              title="Exportar únicamente los apuntes de esta materia"
-            >
-              <Download size={14} /> Exportar .md
-            </button>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-              title="Añadir apuntes desde un archivo Markdown a esta materia"
-            >
-              <Upload size={14} /> Importar .md
-            </button>
-            <button type="button" onClick={() => { if (materiaActiva) { exportNotesHtml(materiaActiva); setMensaje("Apuntes exportados en HTML."); } }} className="vani-pill" title="Exportar apuntes con formato y colores"><Download size={14} /> Exportar .html</button>
-            <input ref={fileInputRef} type="file" accept="text/markdown,.md" className="hidden" onChange={handleImport} />
+      <header onKeyDown={(e) => { if (e.key === "Escape") setHeaderCompact(true); }} className={`${headerPinned ? "sticky top-0" : "relative"} z-30 shadow-sm`}>
+        <div className="workspace-toolbar">
+          <button className="toolbar-icon" aria-label="Mostrar u ocultar menú" aria-expanded={navigationOpen} aria-controls="workspace-navigation" onClick={() => setNavigationOpen(!navigationOpen)}><Menu size={20} /></button><span className="workspace-brand">vani<span aria-hidden="true">.</span></span>
+          <button type="button" onClick={() => setCommandOpen(true)} className="workspace-search" aria-label="Buscar o abrir comandos" title="Abrir comandos (Ctrl/⌘ + K)"><Command size={16} /><span>Buscar o hacer…</span><kbd>⌘ K</kbd></button>
+          <div className="ml-auto flex items-center gap-1">
+            <button className="toolbar-icon" aria-label="Fijar encabezado" aria-pressed={headerPinned} title="Fijar encabezado" onClick={() => { setHeaderPinned(!headerPinned); localStorage.setItem("vani_header_pinned", String(!headerPinned)); }}>{headerPinned ? <Pin size={17} /> : <PinOff size={17} />}</button>
+            <button className="toolbar-icon" aria-label="Cambiar tema" title="Cambiar tema" onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")}>{theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}</button>
+            <button className="toolbar-icon" aria-label="Herramientas" title="Herramientas" aria-expanded={!headerCompact} aria-controls="workspace-tools" onClick={() => setHeaderCompact(!headerCompact)}><SlidersHorizontal size={18} /></button>
             <AuthPanel />
           </div>
         </div>
-
-        </div>
-        <TabBar
-          materias={materias}
-          activaId={materiaActiva?.id || ""}
-          onSelect={setActivaId}
-          onAdd={agregarMateria}
-          onDelete={(id) => setMateriaAEliminar(materias.find((m) => m.id === id) || null)}
-        />
+        {!headerCompact && <div id="workspace-tools" className="workspace-tools" onKeyDown={(e) => { if(e.key === "Escape") setHeaderCompact(true); }}>
+          <span className="text-xs text-slate-500">Archivos</span>
+          <button className="vani-pill" onClick={() => { fileInputRef.current?.click(); setHeaderCompact(true); }}><Upload size={15} />Importar .md</button>
+          <button className="vani-pill" onClick={() => { if(materiaActiva) exportNotesMarkdown(materiaActiva); setHeaderCompact(true); }}><Download size={15} />Exportar .md</button>
+          <button className="vani-pill" onClick={() => { if(materiaActiva) exportNotesHtml(materiaActiva); setHeaderCompact(true); }}><Download size={15} />Exportar .html</button>
+        </div>}
+        <input ref={fileInputRef} type="file" accept="text/markdown,.md" className="hidden" onChange={handleImport} />
       </header>
 
+      <div className="study-layout">
+      {navigationOpen && <nav id="workspace-navigation" className="study-navigation" aria-label="Menú principal">
+        <p className="nav-eyebrow">ESPACIO DE ESTUDIO</p>
+        {[["notes", "Apuntes", NotebookPen], ["calendar", "Calendario", CalendarDays], ["rubric", "Encuadre", BookOpen]].map(([id,label,Icon]) => <button key={id} className={"study-nav-item " + (section === id ? "selected" : "")} aria-current={section === id ? "page" : undefined} onClick={() => setSection(id)}><Icon size={18} />{label}</button>)}
+        <div className="mt-8 flex items-center justify-between"><p className="nav-eyebrow">MATERIAS</p><button className="toolbar-icon" aria-label="Añadir materia" onClick={agregarMateria}><Plus size={16} /></button></div>
+        {materias.map((m) => <div key={m.id} className="flex items-center gap-1"><button className={"study-nav-item min-w-0 flex-1 " + (materiaActiva?.id === m.id ? "subject-selected" : "")} aria-current={materiaActiva?.id === m.id ? "true" : undefined} onClick={() => setActivaId(m.id)}><span className="h-2 w-2 shrink-0 rounded-full" style={{backgroundColor:m.color}} /><span className="truncate">{m.nombre}</span></button><button className="nav-delete" aria-label={"Eliminar " + m.nombre} onClick={() => setMateriaAEliminar(m)}><Trash2 size={13} /></button></div>)}
+        <div className="nav-bottom"><button className="study-nav-item" onClick={() => setCommandOpen(true)}><Command size={17} />Comandos</button><button className="study-nav-item" onClick={() => setHeaderCompact(!headerCompact)}><SlidersHorizontal size={17} />Herramientas</button></div>
+      </nav>}
+      <main className="study-content">
       <SyncStatus sync={sync} signedIn={Boolean(userId)} />
-      {!sync.ready ? <p className="p-6">Esperando tus apuntes. Si no hay conexión, pulsa Reintentar.</p> : !materiaActiva ? <div className="p-6"><p>Aún no hay materias en esta cuenta. Importa tus apuntes de este navegador o crea una materia.</p><button className="mt-3 rounded border p-2" onClick={agregarMateria}>Crear materia</button></div> : <div className="flex min-h-[calc(100vh-106px)] flex-col transition-colors lg:flex-row" style={{ backgroundColor }}>
-        <Sidebar
+      {!sync.ready ? <p className="p-6">Cargando apuntes. Si no hay conexión, pulsa Reintentar.</p> : !materiaActiva ? <div className="p-6"><p>Aún no hay materias en esta cuenta. Importa los apuntes de este navegador o crea una materia.</p><button className="mt-3 rounded border p-2" onClick={agregarMateria}>Crear materia</button></div> : <div className="flex min-h-[calc(100vh-106px)] flex-col transition-colors lg:flex-row" style={{ backgroundColor }}>
+        {section !== "notes" && <Sidebar section={section}
           materia={materiaActiva}
           onUpdate={actualizarMateriaActiva}
           onSaved={() => setMensaje("Cambios guardados.")}
-        />
-        <NotesGrid materia={materiaActiva} onUpdate={actualizarMateriaActiva} />
+        />}
+        {section === "notes" && <NotesGrid key={materiaActiva.id} materia={materiaActiva} onUpdate={actualizarMateriaActiva} />}
       </div>}
 
+      </main></div>
       {mensaje && (
         <div className="fixed bottom-4 left-1/2 z-50 max-w-[90vw] -translate-x-1/2 break-words rounded-full bg-slate-900 px-4 py-2 text-center text-sm font-medium text-white shadow-lg dark:bg-slate-100 dark:text-slate-900" role="status">
           {mensaje}

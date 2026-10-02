@@ -17,6 +17,20 @@ const existing = [{ id: 'existing', nombre: 'Biología', color: '#123456',
   temas: [{ id: 'topic', nombre: 'Células', tarjetas: [{ id: 'note', titulo: 'Membrana', color: '#654321', contenido: '<h2>Resumen</h2><p><strong>Texto</strong> y <a href="https://example.com">enlace</a></p>' }] }],
 }];
 
+test('new assignment fields survive reload alongside historical dates and untouched notes', () => {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: new MemoryStorage() });
+  try {
+    const data = structuredClone(existing);
+    data[0].fechas[0] = { ...data[0].fechas[0], fecha: '2020-01-01', criterioId: 'criterion', peso: '15', realizado: true, formato: 'reactivos', resultado: '10', reactivos: '20' };
+    saveData(data);
+    assert.deepEqual(JSON.parse(JSON.stringify(loadData().materias)), data);
+  } finally {
+    if (previous) Object.defineProperty(globalThis, 'localStorage', previous);
+    else delete globalThis.localStorage;
+  }
+});
+
 test('existing guest notes retain IDs, HTML, colors, criteria and calendar after save/reload', () => {
   const previous = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
   Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: new MemoryStorage() });

@@ -16,6 +16,19 @@ export default function CommandPalette({ open, onClose, commands }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef(null);
 
+  useEffect(() => {
+    if (!open) return;
+    const closeWithEscape = (event) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      onClose();
+    };
+    // Escape must work after focus moves from the search field to a command.
+    document.addEventListener("keydown", closeWithEscape, true);
+    return () => document.removeEventListener("keydown", closeWithEscape, true);
+  }, [open, onClose]);
+
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return commands;

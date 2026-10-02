@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const labels = { local: 'Guardado en este dispositivo', loading: 'Cargando tus apuntes…',
+const labels = { local: 'Guardado en este dispositivo', loading: 'Cargando apuntes…',
   syncing: 'Sincronizando…', pending: 'Cambios pendientes de sincronizar',
   synced: 'Sincronizado con Supabase', error: 'Sin sincronizar. Reintentaremos al recuperar la conexión.',
   conflict: 'Hay cambios diferentes en otro dispositivo.' };
@@ -11,7 +11,7 @@ export default function SyncStatus({ sync, signedIn }) {
   const button = 'rounded border border-slate-300 px-2 py-1 font-semibold dark:border-slate-600';
   return <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-white px-4 py-2 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
     <span role="status">{labels[sync.status]}</span>
-    {sync.storageError && <span role="alert">No se pudo guardar la copia local. Exporta tus apuntes antes de cerrar.</span>}
+    {sync.storageError && <span role="alert">No se pudo guardar la copia local. Exporta los apuntes antes de cerrar.</span>}
     {sync.status === 'error' && <button className={button} onClick={sync.retry}>Reintentar</button>}
     {sync.conflict && <div role="alert" className="flex flex-wrap items-center gap-2">
       <span>Elige una versión; conservaremos una copia de respaldo de la otra en este dispositivo.</span>

@@ -46,6 +46,7 @@ function normalizeEvent(evento, index) {
     tipo: evento.tipo || "tarea",
     fecha: evento.fecha || "",
     titulo: evento.titulo || evento.texto || "",
+    ...Object.fromEntries(["criterioId", "peso", "realizado", "formato", "resultado", "reactivos"].filter((key) => Object.hasOwn(evento, key)).map((key) => [key, evento[key]])),
   };
 }
 

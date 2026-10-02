@@ -1,25 +1,35 @@
 import { useState } from "react";
-import { FolderPlus, PlusCircle, Trash2, LayoutGrid, List, ChevronDown, ChevronUp, Maximize2, Minimize2 } from "lucide-react";
+import { FolderPlus, PlusCircle, Trash2, LayoutGrid, List, ChevronDown, ChevronUp, Maximize2, Minimize2, FileText, ArrowLeft, ChevronRight } from "lucide-react";
 import TipTapEditor from "./TipTapEditor";
+import ColorPicker from "./ColorPicker";
 import ConfirmModal from "./ConfirmModal";
+import { validTopicName } from "../storage/assessment.js";
 
 const TOPIC_COLORS = ["#647C68", "#667FA0", "#A47962", "#8C729C", "#9B8A52"];
 
 export default function NotesGrid({ materia, onUpdate }) {
+  const [openedCard, setOpenedCard] = useState(null);
   const [activeCard, setActiveCard] = useState(null);
-  const [view, setView] = useState(() => localStorage.getItem("vani_notes_view") || "grid");
+  const [view, setView] = useState("list");
   const [collapsed, setCollapsed] = useState({});
   const [wide, setWide] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [topicError, setTopicError] = useState(null);
 
   const updateTopics = (updater) => onUpdate("temas", updater(materia.temas || []));
 
   const addTopic = () => {
+    setOpenedCard(null);
     const nuevo = { id: `topic-${Date.now()}`, nombre: `Tema ${(materia.temas || []).length + 1}`, tarjetas: [] };
     updateTopics((temas) => [...temas, nuevo]);
   };
 
   const updateTopic = (topicId, field, value) => {
+    if (field === "nombre") {
+      const previous = (materia.temas || []).find((topic) => topic.id === topicId)?.nombre || "";
+      if (!validTopicName(value) && value.length >= previous.length) { setTopicError(topicId); return; }
+      setTopicError(null);
+    }
     updateTopics((temas) => temas.map((tema) => tema.id === topicId ? { ...tema, [field]: value } : tema));
   };
 
@@ -31,6 +41,7 @@ export default function NotesGrid({ materia, onUpdate }) {
       color: materia.color || "#3B82F6",
     };
     setActiveCard(`${materia.id}-${topicId}-${nueva.id}`);
+    setOpenedCard(`${materia.id}-${topicId}-${nueva.id}`);
     updateTopics((temas) => temas.map((tema) =>
       tema.id === topicId ? { ...tema, tarjetas: [...(tema.tarjetas || []), nueva] } : tema,
     ));
@@ -55,6 +66,8 @@ export default function NotesGrid({ materia, onUpdate }) {
     } else {
       updateTopics((temas) => temas.filter((tema) => tema.id !== deleteTarget.id));
     }
+    setOpenedCard(null);
+    setActiveCard(null);
     setDeleteTarget(null);
   };
 
@@ -62,19 +75,7 @@ export default function NotesGrid({ materia, onUpdate }) {
     <section className="min-w-0 flex-1 p-4 sm:p-5 lg:p-6">
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-3">
-          <label
-            className="relative h-8 w-8 shrink-0 cursor-pointer rounded-full border-2 border-white shadow-sm ring-1 ring-slate-300 transition hover:scale-105 dark:border-slate-800 dark:ring-slate-600"
-            style={{ backgroundColor: materia.color || "#3B82F6" }}
-            title="Cambiar color de la materia"
-          >
-            <input
-              type="color"
-              value={materia.color || "#3B82F6"}
-              onChange={(e) => onUpdate("color", e.target.value)}
-              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-              aria-label="Color de la materia"
-            />
-          </label>
+          <ColorPicker label="Color de la materia" value={materia.color || "#3B82F6"} onChange={(color) => onUpdate("color", color)} />
           <input
             type="text"
             value={materia.nombre}
@@ -90,21 +91,24 @@ export default function NotesGrid({ materia, onUpdate }) {
 
       <div className="mb-4 flex flex-wrap items-center gap-2 text-sm" role="group" aria-label="Vista de apuntes">
         <div className="vani-view-switch">
-          {[["grid", "Cuadrícula", LayoutGrid], ["list", "Lista", List]].map(([value, label, Icon]) => <button key={value} type="button" aria-pressed={view === value} onClick={() => { setView(value); localStorage.setItem("vani_notes_view", value); }} className="vani-view-option"><Icon size={16} aria-hidden="true" />{label}</button>)}
+          {[["grid", "Cuadrícula", LayoutGrid], ["list", "Lista", List]].map(([value, label, Icon]) => <button key={value} type="button" aria-pressed={view === value} onClick={() => { setView(value); setOpenedCard(null); localStorage.setItem("vani_notes_view", value); }} className="vani-view-option"><Icon size={16} aria-hidden="true" />{label}</button>)}
         </div>
-        <span className="text-xs text-slate-500 dark:text-slate-400">{view === "grid" ? "Explora tus apuntes en tarjetas" : "Más espacio para leer y escribir"}</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400">{view === "grid" ? "Apuntes en tarjetas" : "Elige un apunte. Un espacio para concentrarte."}</span>
       </div>
+      {view === "list" && openedCard && <button className="vani-pill mb-5" onClick={() => { setOpenedCard(null); setActiveCard(null); }}><ArrowLeft size={16} />Todos los apuntes</button>}
       <div className="space-y-5">
-        {(materia.temas || []).map((tema, topicIndex) => (
+        {(materia.temas || []).filter((tema) => view !== "list" || !openedCard || (tema.tarjetas || []).some((card) => `${materia.id}-${tema.id}-${card.id}` === openedCard)).map((tema, topicIndex) => (
           <section key={tema.id} className="topic-section rounded-2xl border p-3 sm:p-4" style={{ "--topic-color": tema.color || TOPIC_COLORS[topicIndex % TOPIC_COLORS.length] }}>
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <label className="relative flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl text-white" style={{ backgroundColor: tema.color || TOPIC_COLORS[topicIndex % TOPIC_COLORS.length] }} title="Cambiar color del tema"><FolderPlus size={18} aria-hidden="true" /><input type="color" aria-label={`Color del tema ${tema.nombre}`} value={tema.color || TOPIC_COLORS[topicIndex % TOPIC_COLORS.length]} onChange={(event) => updateTopic(tema.id, "color", event.target.value)} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" /></label>
+              <ColorPicker label={`Color del tema ${tema.nombre}`} value={tema.color || TOPIC_COLORS[topicIndex % TOPIC_COLORS.length]} onChange={(color) => updateTopic(tema.id, "color", color)} />
               <input
                 value={tema.nombre}
                 onChange={(e) => updateTopic(tema.id, "nombre", e.target.value)}
                 className="min-w-0 flex-1 break-words bg-transparent text-base font-bold text-slate-800 outline-none dark:text-slate-100"
                 aria-label="Nombre del tema"
+                title="Máximo 10 palabras y 80 caracteres"
               />
+              {topicError === tema.id && <span role="alert" className="w-full text-xs text-rose-600 dark:text-rose-300">Máximo 10 palabras y 80 caracteres.</span>}
               <button onClick={() => addCard(tema.id)} className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-700">
                 <PlusCircle size={14} /> Apunte
               </button>
@@ -121,7 +125,7 @@ export default function NotesGrid({ materia, onUpdate }) {
               <p className="rounded-xl border border-dashed border-slate-300 p-5 text-center text-sm text-slate-400 dark:border-slate-700">Este tema todavía no tiene apuntes.</p>
             ) : (
               <div className={view === "list" ? "grid grid-cols-1 items-start gap-4" : "grid grid-cols-1 items-start gap-4 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3"}>
-                {(tema.tarjetas || []).map((tarjeta) => {
+                {(tema.tarjetas || []).filter((card) => view !== "list" || !openedCard || `${materia.id}-${tema.id}-${card.id}` === openedCard).map((tarjeta) => {
                   const cardKey = `${materia.id}-${tema.id}-${tarjeta.id}`;
                   const isActive = activeCard === cardKey;
                   const previewDoc = new DOMParser().parseFromString(tarjeta.contenido || "", "text/html");
@@ -129,6 +133,7 @@ export default function NotesGrid({ materia, onUpdate }) {
                   const preview = (previewDoc.body.textContent || "").trim();
                   const isCollapsed = collapsed[cardKey] ?? preview.length > 650;
                   const cardColor = tarjeta.color || materia.color || "#3B82F6";
+                  if (view === "list" && !openedCard) return <button key={tarjeta.id} className="note-list-row" onClick={() => { setOpenedCard(cardKey); setCollapsed((current) => ({...current,[cardKey]:false})); }}><span className="note-list-icon" style={{color:cardColor}}><FileText size={20} /></span><span className="min-w-0 flex-1 text-left"><span className="block truncate font-medium">{tarjeta.titulo || "Sin título"}</span><span className="block truncate text-xs text-slate-500 dark:text-slate-400">{preview.slice(0,100) || "Empieza a escribir aquí"}</span></span><ChevronRight size={16} className="text-slate-400" /></button>;
                   return (
                     <article
                       key={tarjeta.id}
@@ -143,19 +148,7 @@ export default function NotesGrid({ materia, onUpdate }) {
                         <button type="button" className="vani-pill" onClick={() => { setActiveCard(isActive ? null : cardKey); if (!isActive) setCollapsed((current) => ({ ...current, [cardKey]: false })); }}>{isActive ? "Terminar" : "Editar apunte"}</button>
                       </div>
                       {isActive ? <div className="mb-3 flex items-center gap-2">
-                        <label
-                          className="relative h-6 w-6 shrink-0 cursor-pointer rounded-full border-2 border-white shadow-sm ring-1 ring-slate-300 transition hover:scale-110 dark:border-slate-900 dark:ring-slate-600"
-                          style={{ backgroundColor: cardColor }}
-                          title="Cambiar color de este apunte"
-                        >
-                          <input
-                            type="color"
-                            value={cardColor}
-                            onChange={(e) => updateCard(tema.id, tarjeta.id, "color", e.target.value)}
-                            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                            aria-label={`Color del apunte ${tarjeta.titulo}`}
-                          />
-                        </label>
+                        <ColorPicker label={`Color del apunte ${tarjeta.titulo}`} value={cardColor} onChange={(color) => updateCard(tema.id, tarjeta.id, "color", color)} />
                         <input
                           type="text"
                           value={tarjeta.titulo}

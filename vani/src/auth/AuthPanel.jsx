@@ -83,10 +83,10 @@ export default function AuthPanel() {
         if (signUpError) throw signUpError;
 
         if (data.session) {
-          setMessage("Cuenta creada. Ya puedes usar Vani con tu sesión iniciada.");
+          setMessage("Cuenta creada. La sesión está iniciada.");
           setOpen(false);
         } else {
-          setMessage("Cuenta creada. Revisa tu correo para confirmar tu cuenta.");
+          setMessage("Cuenta creada. Revisa el correo para confirmar la cuenta.");
         }
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -161,7 +161,7 @@ export default function AuthPanel() {
                   {mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  {mode === "register" ? "Crea tu cuenta con tu correo y una contraseña. Después, revisa tu correo para confirmar el acceso si te lo solicitamos." : "Retoma tus materias y apuntes en cualquier dispositivo. Si aún no tienes cuenta, elige Crear cuenta."}
+                  {mode === "register" ? "Crea una cuenta con correo y contraseña. Si se solicita confirmación, revisa el correo para completar el registro." : "Accede a las materias y apuntes desde cualquier dispositivo. Si aún no tienes cuenta, elige Crear cuenta."}
                 </p>
               </div>
               <button type="button" disabled={busy} onClick={() => setOpen(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Cerrar">
@@ -197,7 +197,7 @@ export default function AuthPanel() {
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                   autoComplete="email"
-                  placeholder="tu@correo.com"
+                  placeholder="nombre@correo.com"
                   className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-0 transition focus:border-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                 />
               </label>
@@ -211,13 +211,13 @@ export default function AuthPanel() {
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   autoComplete={mode === "login" ? "current-password" : "new-password"}
-                  placeholder={mode === "register" ? "Mínimo 8 caracteres" : "Tu contraseña"}
+                  placeholder={mode === "register" ? "Mínimo 8 caracteres" : "Contraseña"}
                   className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-0 transition focus:border-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                 />
               </label>
 
               <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300"><input type="checkbox" checked={showPassword} onChange={(event) => setShowPassword(event.target.checked)} /> Mostrar contraseña</label>
-              {mode === "register" && <p className="text-xs text-slate-500">Usa al menos 8 caracteres. Tus apuntes locales seguirán disponibles; podrás importarlos a tu cuenta al entrar.</p>}
+              {mode === "register" && <p className="text-xs text-slate-500">Usa al menos 8 caracteres. Los apuntes locales seguirán disponibles; podrás importarlos a la cuenta al entrar.</p>}
               {error && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</p>}
               {message && <p role="status" className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">{message}</p>}
 
